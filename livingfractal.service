@@ -1,0 +1,25 @@
+[Unit]
+Description=Living Fractal Prototype
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/livingfractal
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+# Environment
+EnvironmentFile=/opt/livingfractal/.env
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/livingfractal
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

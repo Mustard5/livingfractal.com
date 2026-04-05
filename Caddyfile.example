@@ -1,0 +1,18 @@
+# Add this to your Caddyfile or as a site block
+# This reverse-proxies livingfractal.com to the Node.js prototype
+
+livingfractal.com {
+    # API requests to the Node backend
+    reverse_proxy /api/* localhost:3120
+
+    # Static files from the Node backend (public/ dir)
+    reverse_proxy localhost:3120
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:;"
+    }
+}
