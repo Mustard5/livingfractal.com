@@ -200,6 +200,10 @@ app.get('/manifesto', (req, res) => {
   res.sendFile(join(__dirname, 'public/manifesto.html'));
 });
 
+app.get('/admin', (req, res) => {
+  res.sendFile(join(__dirname, 'public/admin.html'));
+});
+
 // ── Health check ──
 app.get('/api/health', (req, res) => {
   const prompt = prompts.getLatest();

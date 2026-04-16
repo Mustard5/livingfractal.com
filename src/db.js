@@ -6,7 +6,9 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const DATA_DIR = join(__dirname, '..', 'data');
+const DATA_DIR = process.env.LF_DATA_DIR
+  ? join(process.env.LF_DATA_DIR, 'data')
+  : join(__dirname, '..', 'data');
 const DB_PATH = join(DATA_DIR, 'sessions.db');
 
 let db = null;

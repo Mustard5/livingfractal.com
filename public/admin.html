@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Living Fractal -- Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0c0f;
+    --bg-card: #0f1216;
+    --bg-card-hover: #141920;
+    --border-dim: #1a1f28;
+    --border-active: #2a3444;
+    --text-primary: #c8cdd5;
+    --text-secondary: #6b7280;
+    --text-muted: #3d4554;
+    --accent-green: #4ade80;
+    --accent-green-dim: #16422e;
+    --accent-blue: #60a5fa;
+    --accent-amber: #fbbf24;
+    --accent-red: #f87171;
+    --glow-green: rgba(74, 222, 128, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Source Serif 4', Georgia, serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(74,222,128,0.03), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(96,165,250,0.02), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 32px 0 16px;
+    border-bottom: 1px solid var(--border-dim);
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-green);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand::before {
+    content: '\25C6';
+    font-size: 8px;
+  }
+
+  .brand a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logout-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid var(--border-dim);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .logout-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-active);
+  }
+
+  /* ── Auth screen ── */
+  .auth-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 20px;
+  }
+
+  .auth-screen h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .auth-screen input {
+    width: 400px;
+    max-width: 90vw;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .auth-screen input:focus {
+    outline: none;
+    border-color: var(--accent-green);
+  }
+
+  .auth-screen button {
+    padding: 10px 32px;
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .auth-screen button:hover {
+    background: rgba(74, 222, 128, 0.15);
+  }
+
+  .auth-error {
+    color: var(--accent-red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* ── Nav tabs ── */
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .nav-tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .nav-tab:hover {
+    color: var(--text-primary);
+  }
+
+  .nav-tab.active {
+    color: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+  }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent-green);
+  }
+
+  .stat-value.warn {
+    color: var(--accent-amber);
+  }
+
+  .stat-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ── Table ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .data-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .data-table tr:hover td {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .data-table tr {
+    cursor: pointer;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .badge-pass {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--accent-green);
+  }
+
+  .badge-fail {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--accent-red);
+  }
+
+  .badge-flag {
+    background: rgba(251, 191, 36, 0.1);
+    color: var(--accent-amber);
+  }
+
+  .badge-null {
+    background: rgba(61, 69, 84, 0.3);
+    color: var(--text-muted);
+  }
+
+  /* ── Session detail ── */
+  .detail-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .detail-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .back-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid var(--border-dim);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .back-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-active);
+  }
+
+  .detail-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .meta-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .meta-label {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .meta-value {
+    color: var(--text-secondary);
+  }
+
+  .detail-section {
+    margin-bottom: 20px;
+  }
+
+  .detail-section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .code-block {
+    background: var(--bg-deep);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+
+  .validation-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .validation-list li {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 4px 0;
+    color: var(--text-secondary);
+  }
+
+  .validation-list li::before {
+    margin-right: 8px;
+  }
+
+  .validation-list li.error::before {
+    content: '\2718';
+    color: var(--accent-red);
+  }
+
+  .validation-list li.warning::before {
+    content: '\26A0';
+    color: var(--accent-amber);
+  }
+
+  .validation-list li.pass::before {
+    content: '\2714';
+    color: var(--accent-green);
+  }
+
+  /* ── Prompts ── */
+  .prompt-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .prompt-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .prompt-item:hover {
+    border-color: var(--border-active);
+    background: var(--bg-card-hover);
+  }
+
+  .prompt-item.current {
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+
+  .prompt-version {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .prompt-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .reload-btn {
+    padding: 8px 20px;
+    background: var(--accent-green-dim);
+    color: var(--accent-green);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+  }
+
+  .reload-btn:hover {
+    background: rgba(74, 222, 128, 0.15);
+  }
+
+  /* ── Panel visibility ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Loading ── */
+  .loading {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 40px;
+    text-align: center;
+  }
+
+  .empty-state {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 60px 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+  <header>
+    <div class="brand"><a href="/">Living Fractal</a> // Admin</div>
+    <div class="header-right" id="header-right" style="display:none;">
+      <span id="db-status" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);"></span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <!-- Auth screen -->
+  <div id="auth-screen" class="auth-screen">
+    <h2>Admin Access</h2>
+    <input type="password" id="token-input" placeholder="Enter admin token" onkeydown="if(event.key==='Enter')authenticate()">
+    <button onclick="authenticate()">Authenticate</button>
+    <div id="auth-error" class="auth-error"></div>
+  </div>
+
+  <!-- Main dashboard -->
+  <div id="dashboard" style="display:none;">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('overview')">Overview</button>
+      <button class="nav-tab" onclick="switchTab('sessions')">Sessions</button>
+      <button class="nav-tab" onclick="switchTab('prompts')">Prompts</button>
+    </nav>
+
+    <!-- Overview panel -->
+    <div id="panel-overview" class="panel active">
+      <div id="stats-grid" class="stats-grid">
+        <div class="loading">Loading stats...</div>
+      </div>
+      <h3 style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Model Breakdown</h3>
+      <div id="model-breakdown"></div>
+      <h3 style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin:24px 0 12px;">Top Validation Errors</h3>
+      <div id="top-errors"></div>
+    </div>
+
+    <!-- Sessions panel -->
+    <div id="panel-sessions" class="panel">
+      <div id="sessions-list"></div>
+      <div id="session-detail" style="display:none;"></div>
+    </div>
+
+    <!-- Prompts panel -->
+    <div id="panel-prompts" class="panel">
+      <button class="reload-btn" onclick="reloadPrompts()">Reload Prompts from Disk</button>
+      <div id="prompts-list"></div>
+      <div id="prompt-detail" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let token = sessionStorage.getItem('lf_admin_token') || '';
+
+async function api(path, method = 'GET') {
+  const res = await fetch(`/api/admin${path}`, {
+    method,
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403) {
+    logout();
+    throw new Error('Unauthorized');
+  }
+  return res.json();
+}
+
+async function authenticate() {
+  const input = document.getElementById('token-input');
+  const err = document.getElementById('auth-error');
+  token = input.value.trim();
+  if (!token) return;
+  try {
+    await api('/stats');
+    sessionStorage.setItem('lf_admin_token', token);
+    showDashboard();
+  } catch (e) {
+    err.textContent = 'Invalid token or server error.';
+    token = '';
+  }
+}
+
+function logout() {
+  token = '';
+  sessionStorage.removeItem('lf_admin_token');
+  document.getElementById('auth-screen').style.display = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('header-right').style.display = 'none';
+  document.getElementById('token-input').value = '';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function showDashboard() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('header-right').style.display = 'flex';
+  loadStats();
+  loadSessions();
+}
+
+// ── Overview ──
+
+async function loadStats() {
+  try {
+    const stats = await api('/stats');
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-value">${stats.totalSessions}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Last 24 Hours</div>
+        <div class="stat-value">${stats.last24h}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Validation Pass Rate</div>
+        <div class="stat-value ${stats.validationPassRate < 80 ? 'warn' : ''}">${stats.validationPassRate}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Latency</div>
+        <div class="stat-value">${stats.avgLatencyMs ? (stats.avgLatencyMs / 1000).toFixed(1) + 's' : '--'}</div>
+      </div>
+    `;
+
+    const models = stats.modelBreakdown || {};
+    const modelKeys = Object.keys(models);
+    document.getElementById('model-breakdown').innerHTML = modelKeys.length
+      ? modelKeys.map(m => `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);padding:4px 0;">${m}: <span style="color:var(--accent-green);">${models[m]}</span></div>`).join('')
+      : '<div class="empty-state">No data yet</div>';
+
+    const errors = stats.topErrors || [];
+    document.getElementById('top-errors').innerHTML = errors.length
+      ? errors.map(e => {
+          let parsed;
+          try { parsed = JSON.parse(e.validation_errors); } catch { parsed = [e.validation_errors]; }
+          return `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);padding:4px 0;"><span style="color:var(--accent-red);">${e.count}x</span> ${esc(Array.isArray(parsed) ? parsed.join(', ') : String(parsed))}</div>`;
+        }).join('')
+      : '<div class="empty-state">No validation errors yet</div>';
+
+  } catch (e) {
+    document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats.</div>';
+  }
+}
+
+// ── Sessions ──
+
+async function loadSessions() {
+  const container = document.getElementById('sessions-list');
+  container.innerHTML = '<div class="loading">Loading sessions...</div>';
+  try {
+    const data = await api('/sessions?limit=100');
+    const sessions = data.sessions || [];
+    if (!sessions.length) {
+      container.innerHTML = '<div class="empty-state">No sessions yet. Generate a config to create the first one.</div>';
+      return;
+    }
+    container.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Intent</th>
+            <th>Model</th>
+            <th>Validation</th>
+            <th>Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sessions.map(s => `
+            <tr onclick="loadSessionDetail('${s.id}')">
+              <td>${formatTime(s.created_at)}</td>
+              <td title="${esc(s.sanitized_intent || '')}">${esc(truncate(s.sanitized_intent || '(empty)', 60))}</td>
+              <td>${shortModel(s.model)}</td>
+              <td>${validationBadge(s.validation_passed, s.input_flagged)}</td>
+              <td>${s.latency_ms ? (s.latency_ms / 1000).toFixed(1) + 's' : '--'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (e) {
+    container.innerHTML = '<div class="loading">Failed to load sessions.</div>';
+  }
+}
+
+async function loadSessionDetail(id) {
+  document.getElementById('sessions-list').style.display = 'none';
+  const detail = document.getElementById('session-detail');
+  detail.style.display = 'block';
+  detail.innerHTML = '<div class="loading">Loading session...</div>';
+
+  try {
+    const data = await api(`/sessions/${id}`);
+    const s = data.session;
+    const gen = s.generations?.[0];
+
+    let validationHtml = '';
+    if (gen) {
+      const errors = gen.validation_errors ? JSON.parse(gen.validation_errors) : [];
+      const warnings = gen.validation_warnings ? JSON.parse(gen.validation_warnings) : [];
+      const items = [
+        ...errors.map(e => `<li class="error">${esc(e)}</li>`),
+        ...warnings.map(w => `<li class="warning">${esc(w)}</li>`),
+      ];
+      if (!items.length) items.push('<li class="pass">All checks passed</li>');
+      validationHtml = `<ul class="validation-list">${items.join('')}</ul>`;
+    }
+
+    detail.innerHTML = `
+      <div class="detail-panel">
+        <div class="detail-header">
+          <div class="detail-title">Session ${s.id.substring(0, 8)}...</div>
+          <button class="back-btn" onclick="closeSessionDetail()">Back to list</button>
+        </div>
+        <div class="detail-meta">
+          <div class="meta-item"><div class="meta-label">Time</div><div class="meta-value">${formatTime(s.created_at)}</div></div>
+          <div class="meta-item"><div class="meta-label">Model</div><div class="meta-value">${esc(s.model)}</div></div>
+          <div class="meta-item"><div class="meta-label">Prompt</div><div class="meta-value">${esc(s.prompt_version)}</div></div>
+          <div class="meta-item"><div class="meta-label">Tier</div><div class="meta-value">${esc(s.tier)}</div></div>
+          <div class="meta-item"><div class="meta-label">Flagged</div><div class="meta-value">${s.input_flagged ? 'Yes' : 'No'}</div></div>
+          ${s.hardware_keywords ? `<div class="meta-item"><div class="meta-label">Hardware</div><div class="meta-value">${esc(s.hardware_keywords)}</div></div>` : ''}
+          ${s.usecase_keywords ? `<div class="meta-item"><div class="meta-label">Use Case</div><div class="meta-value">${esc(s.usecase_keywords)}</div></div>` : ''}
+          ${gen ? `
+            <div class="meta-item"><div class="meta-label">Latency</div><div class="meta-value">${gen.latency_ms ? (gen.latency_ms / 1000).toFixed(1) + 's' : '--'}</div></div>
+            <div class="meta-item"><div class="meta-label">Tokens</div><div class="meta-value">${gen.input_tokens ?? '?'} in / ${gen.output_tokens ?? '?'} out</div></div>
+            <div class="meta-item"><div class="meta-label">Config Hash</div><div class="meta-value">${gen.config_hash ? gen.config_hash.substring(0, 12) + '...' : '--'}</div></div>
+          ` : ''}
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">User Intent</div>
+          <div class="code-block">${esc(s.raw_intent || '(none)')}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Validation</div>
+          ${validationHtml || '<div class="empty-state">No generation data</div>'}
+        </div>
+
+        ${gen?.config_text ? `
+          <div class="detail-section">
+            <div class="detail-section-title">Generated Configuration</div>
+            <div class="code-block">${esc(gen.config_text)}</div>
+          </div>
+        ` : ''}
+
+        ${gen?.docs_text ? `
+          <div class="detail-section">
+            <div class="detail-section-title">Generated Documentation</div>
+            <div class="code-block">${esc(gen.docs_text)}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  } catch (e) {
+    detail.innerHTML = '<div class="loading">Failed to load session detail.</div>';
+  }
+}
+
+function closeSessionDetail() {
+  document.getElementById('session-detail').style.display = 'none';
+  document.getElementById('sessions-list').style.display = 'block';
+}
+
+// ── Prompts ──
+
+async function loadPrompts() {
+  const container = document.getElementById('prompts-list');
+  container.innerHTML = '<div class="loading">Loading prompts...</div>';
+  try {
+    const data = await api('/prompts');
+    const versions = data.versions || [];
+    container.innerHTML = versions.length
+      ? `<ul class="prompt-list">${versions.map(v => `
+          <li class="prompt-item ${v.version === data.current ? 'current' : ''}" onclick="loadPromptDetail('${v.version}')">
+            <span class="prompt-version">${esc(v.version)}${v.version === data.current ? ' (active)' : ''}</span>
+            <span class="prompt-date">${formatTime(v.createdAt)}</span>
+          </li>
+        `).join('')}</ul>`
+      : '<div class="empty-state">No prompt versions found.</div>';
+  } catch (e) {
+    container.innerHTML = '<div class="loading">Failed to load prompts.</div>';
+  }
+}
+
+async function loadPromptDetail(version) {
+  const detail = document.getElementById('prompt-detail');
+  detail.style.display = 'block';
+  detail.innerHTML = '<div class="loading">Loading prompt...</div>';
+  try {
+    const data = await api(`/prompts/${version}`);
+    detail.innerHTML = `
+      <div class="detail-panel">
+        <div class="detail-header">
+          <div class="detail-title">${esc(data.version)}</div>
+          <button class="back-btn" onclick="document.getElementById('prompt-detail').style.display='none'">Close</button>
+        </div>
+        <div class="code-block">${esc(data.content)}</div>
+      </div>
+    `;
+  } catch (e) {
+    detail.innerHTML = '<div class="loading">Failed to load prompt.</div>';
+  }
+}
+
+async function reloadPrompts() {
+  try {
+    const data = await api('/prompts/reload', 'POST');
+    loadPrompts();
+  } catch (e) {
+    // handled by api()
+  }
+}
+
+// ── Tab switching ──
+
+function switchTab(name) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+
+  if (name === 'overview') loadStats();
+  if (name === 'sessions') { loadSessions(); closeSessionDetail(); }
+  if (name === 'prompts') { loadPrompts(); document.getElementById('prompt-detail').style.display = 'none'; }
+}
+
+// ── Helpers ──
+
+function esc(str) {
+  const el = document.createElement('span');
+  el.textContent = str;
+  return el.innerHTML;
+}
+
+function truncate(str, len) {
+  return str.length > len ? str.substring(0, len) + '...' : str;
+}
+
+function shortModel(model) {
+  if (!model) return '--';
+  const parts = model.split('/');
+  return parts[parts.length - 1].replace(/-0\d{3,4}$/, '');
+}
+
+function formatTime(iso) {
+  if (!iso) return '--';
+  const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function validationBadge(passed, flagged) {
+  if (passed === null || passed === undefined) return '<span class="badge badge-null">--</span>';
+  let html = passed ? '<span class="badge badge-pass">PASS</span>' : '<span class="badge badge-fail">FAIL</span>';
+  if (flagged) html += ' <span class="badge badge-flag">FLAGGED</span>';
+  return html;
+}
+
+// ── Auto-login if token saved ──
+
+if (token) {
+  api('/stats').then(() => showDashboard()).catch(() => {
+    token = '';
+    sessionStorage.removeItem('lf_admin_token');
+  });
+}
+</script>
+
+</body>
+</html>

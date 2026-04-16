@@ -18,7 +18,7 @@ EnvironmentFile=/opt/livingfractal/.env
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/livingfractal
+ReadWritePaths=/opt/livingfractal /var/lib/livingfractal
 PrivateTmp=true
 
 [Install]
