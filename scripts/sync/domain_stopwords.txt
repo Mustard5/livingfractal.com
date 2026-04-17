@@ -1,0 +1,25 @@
+# Domain stopwords for Living Fractal RAG retrieval.
+# These tokens are dropped during keyword extraction in addition to
+# generic English stopwords. They are words that appear commonly in
+# user intent but produce false-friend matches against nixpkgs
+# (e.g. "agent" matches CI/monitoring agents, not AI agents).
+#
+# Add to this list when spot-checks reveal a token is producing more
+# noise than signal. Removal requires evidence that the token now
+# carries useful retrieval value.
+
+agent
+system
+want
+need
+# "ram" appears in hardware spec phrases ("8GB RAM", "32GB RAM") across multiple
+# intents and has zero nixpkgs retrieval value — it directly displaced "luks"
+# from the intent 6 (privacy/LUKS) top-8 window (2026-04-17 spot-check).
+ram
+# "machine" matches ML-pipeline packages (immich-machine-learning,
+# qiskit-machine-learning) when users write "learning Kubernetes and cloud-native
+# tools" — a DevOps context completely unrelated to ML. Co-fires with "learning"
+# to make these packages dominate the top-3 results (2026-04-17 spot-check,
+# intent 8). The useful DevOps tools (kubectl, helm, terraform, docker) only
+# surface when "machine" is excluded from the query.
+machine
