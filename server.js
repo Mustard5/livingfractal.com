@@ -20,6 +20,7 @@ app.use(express.static(join(__dirname, 'public')));
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = process.env.LF_MODEL || 'deepseek/deepseek-chat-v3-0324';
 const PORT = process.env.LF_PORT || 3120;
+const OPENROUTER_TIMEOUT_MS = 150_000; // 150s — keep below NGINX's 180s proxy_read_timeout
 
 if (!OPENROUTER_API_KEY) {
   console.error('OPENROUTER_API_KEY environment variable is required.');
@@ -95,6 +96,35 @@ function parseResponse(raw) {
   return { config, docs };
 }
 
+// ── OpenRouter call with hard timeout ──
+async function callOpenRouter(messages, sessionId, label) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
+  try {
+    return await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://livingfractal.com',
+        'X-Title': 'Living Fractal',
+      },
+      body: JSON.stringify({ model: MODEL, messages, temperature: 0.3, max_tokens: 8000 }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.error(`[TIMEOUT] ${sessionId} ${label}: timed out after ${OPENROUTER_TIMEOUT_MS}ms`);
+      const e = new Error('upstream_timeout');
+      e.name = 'upstream_timeout';
+      throw e;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Generation endpoint ──
 app.post('/api/generate', async (req, res) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -126,24 +156,10 @@ app.post('/api/generate', async (req, res) => {
   db.logIntent(sessionId, description, sanitized.text, sanitized.flagged);
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://livingfractal.com',
-        'X-Title': 'Living Fractal',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: prompt.content },
-          { role: 'user', content: sanitized.text },
-        ],
-        temperature: 0.3,
-        max_tokens: 8000,
-      }),
-    });
+    const response = await callOpenRouter([
+      { role: 'system', content: prompt.content },
+      { role: 'user', content: sanitized.text },
+    ], sessionId, 'attempt 1');
 
     if (!response.ok) {
       const errBody = await response.text();
@@ -208,26 +224,12 @@ app.post('/api/generate', async (req, res) => {
 
         try {
           const retryStart = Date.now();
-          const retryResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-              'HTTP-Referer': 'https://livingfractal.com',
-              'X-Title': 'Living Fractal',
-            },
-            body: JSON.stringify({
-              model: MODEL,
-              messages: [
-                { role: 'system', content: prompt.content },
-                { role: 'user', content: sanitized.text },
-                { role: 'assistant', content: rawContent },
-                { role: 'user', content: retryMsg },
-              ],
-              temperature: 0.3,
-              max_tokens: 8000,
-            }),
-          });
+          const retryResponse = await callOpenRouter([
+            { role: 'system', content: prompt.content },
+            { role: 'user', content: sanitized.text },
+            { role: 'assistant', content: rawContent },
+            { role: 'user', content: retryMsg },
+          ], sessionId, 'retry');
 
           if (retryResponse.ok) {
             const retryData = await retryResponse.json();
@@ -315,6 +317,9 @@ app.post('/api/generate', async (req, res) => {
     });
 
   } catch (err) {
+    if (err.name === 'upstream_timeout') {
+      return res.status(504).json({ error: 'Generation timed out. Please try again.' });
+    }
     console.error('Generation error:', err);
     return res.status(500).json({ error: 'Internal server error during generation.' });
   }
