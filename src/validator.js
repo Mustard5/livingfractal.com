@@ -113,3 +113,105 @@ export function validate(rawOutput) {
     securityFlags,
   };
 }
+
+// ── Extraction functions (pure — no DB or side effects) ──
+
+// Nix builtins and pkgs functions that are not installable packages
+const PKG_IGNORE = new Set([
+  'lib', 'callPackage', 'writeShellScript', 'writeScript', 'buildEnv',
+  'runCommand', 'fetchFromGitHub', 'fetchurl', 'fetchgit', 'stdenv', 'mkShell',
+  'pkgs', 'with', 'let', 'in', 'inherit', 'rec', 'if', 'then', 'else',
+  'assert', 'null', 'true', 'false', 'import', 'builtins',
+]);
+
+// Top-level NixOS option namespaces — anything else is likely a let binding
+export const OPTION_NAMESPACES = new Set([
+  'boot', 'hardware', 'networking', 'services', 'users', 'environment',
+  'programs', 'nix', 'system', 'security', 'fileSystems', 'swapDevices',
+  'virtualisation', 'fonts', 'i18n', 'time', 'sound', 'console',
+  'documentation', 'specialisation', 'containers', 'assertions', 'warnings',
+  'xdg', 'gtk', 'qt', 'location', 'power', 'nixpkgs', 'snapraid', 'ids', 'lib',
+]);
+
+// Extract bare identifiers from inside a `with <scope>; [ ... ]` block
+function extractWithBlock(inner) {
+  const names = new Set();
+  for (const m of inner.matchAll(/\b([a-zA-Z][a-zA-Z0-9_-]*)\b/g)) {
+    if (!PKG_IGNORE.has(m[1])) names.add(m[1]);
+  }
+  return names;
+}
+
+export function extractPackageReferences(nixSource) {
+  const packages = new Set();
+
+  // `with pkgs; [ ... ]` and `with ps; [ ... ]` blocks (multiline-safe: [^\]] matches \n)
+  const withBlockRe = /with\s+(?:pkgs|ps)\s*;\s*\[([^\]]*)\]/g;
+  let m;
+  while ((m = withBlockRe.exec(nixSource)) !== null) {
+    for (const name of extractWithBlock(m[1])) packages.add(name);
+  }
+
+  // `pkgs.NAME` references (capture first segment only — pkgs.python3.withPackages → python3)
+  const pkgsDotRe = /pkgs\.([a-zA-Z][a-zA-Z0-9_-]*)/g;
+  while ((m = pkgsDotRe.exec(nixSource)) !== null) {
+    if (!PKG_IGNORE.has(m[1])) packages.add(m[1]);
+  }
+
+  return [...packages].sort();
+}
+
+export function extractOptionReferences(nixSource) {
+  const options = new Set();
+  const lines = nixSource.split('\n');
+
+  // pathStack holds full dotted prefixes; depthStack holds the brace depth at which each was pushed
+  const pathStack = [];
+  const depthStack = [];
+  let depth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const opens = (line.match(/\{/g) || []).length;
+    const closes = (line.match(/\}/g) || []).length;
+    const net = opens - closes;
+    const newDepth = depth + net;
+
+    // Pop entries going out of scope before processing this line's content
+    while (depthStack.length > 0 && newDepth < depthStack[depthStack.length - 1]) {
+      pathStack.pop();
+      depthStack.pop();
+    }
+
+    if (net > 0) {
+      // Line opens a block — look for `path = {` to push a new prefix
+      // Hyphens appear in real NixOS paths: boot.loader.systemd-boot.enable
+      const bm = trimmed.match(/^([a-zA-Z][a-zA-Z0-9_.-]*)\s*=\s*\{/);
+      if (bm) {
+        const prefix = pathStack.length > 0
+          ? `${pathStack[pathStack.length - 1]}.${bm[1]}`
+          : bm[1];
+        pathStack.push(prefix);
+        depthStack.push(newDepth);
+      }
+    } else if (opens === 0 && closes === 0) {
+      // No braces — leaf assignment
+      const lm = trimmed.match(/^([a-zA-Z][a-zA-Z0-9_.-]*)\s*=/);
+      if (lm) {
+        const fullPath = pathStack.length > 0
+          ? `${pathStack[pathStack.length - 1]}.${lm[1]}`
+          : lm[1];
+        if (OPTION_NAMESPACES.has(fullPath.split('.')[0])) {
+          options.add(fullPath);
+        }
+      }
+    }
+    // net < 0 (only closes): stack was already popped above; no new pushes
+
+    depth = newDepth;
+  }
+
+  return [...options].sort();
+}

@@ -642,6 +642,23 @@ async function loadStats() {
       </div>
     `;
 
+    const gv = stats.groundedValidation || {};
+    const gvTotal = gv.sessionsValidated || 0;
+    const gvCleanRate = gvTotal > 0 ? Math.round(gv.firstPassClean / gvTotal * 100) : null;
+    const gvRetryFixRate = gv.retriesAttempted > 0 ? Math.round(gv.retriesFixed / gv.retriesAttempted * 100) : null;
+    document.getElementById('stats-grid').innerHTML += `
+      <div class="stat-card">
+        <div class="stat-label">Grounded Pass (1st)</div>
+        <div class="stat-value ${gvCleanRate !== null && gvCleanRate < 80 ? 'warn' : ''}">${gvCleanRate !== null ? gvCleanRate + '%' : '--'}</div>
+        <div class="stat-sub">${gvTotal} sessions checked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Retry Fix Rate</div>
+        <div class="stat-value">${gvRetryFixRate !== null ? gvRetryFixRate + '%' : '--'}</div>
+        <div class="stat-sub">${gv.retriesAttempted || 0} retries / ${gv.retriesFixed || 0} fixed</div>
+      </div>
+    `;
+
     const models = stats.modelBreakdown || {};
     const modelKeys = Object.keys(models);
     document.getElementById('model-breakdown').innerHTML = modelKeys.length
@@ -682,6 +699,9 @@ async function loadSessions() {
             <th>Intent</th>
             <th>Model</th>
             <th>Validation</th>
+            <th>Pkg ✗</th>
+            <th>Opt ✗</th>
+            <th>Retry</th>
             <th>Latency</th>
           </tr>
         </thead>
@@ -692,6 +712,9 @@ async function loadSessions() {
               <td title="${esc(s.sanitized_intent || '')}">${esc(truncate(s.sanitized_intent || '(empty)', 60))}</td>
               <td>${shortModel(s.model)}</td>
               <td>${validationBadge(s.validation_passed, s.input_flagged)}</td>
+              <td>${s.first_attempt_invalid_packages != null ? (s.first_attempt_invalid_packages > 0 ? `<span style="color:var(--accent-red)">${s.first_attempt_invalid_packages}</span>` : '<span style="color:var(--accent-green)">0</span>') : '<span style="color:var(--text-muted)">--</span>'}</td>
+              <td>${s.first_attempt_invalid_options != null ? (s.first_attempt_invalid_options > 0 ? `<span style="color:var(--accent-red)">${s.first_attempt_invalid_options}</span>` : '<span style="color:var(--accent-green)">0</span>') : '<span style="color:var(--text-muted)">--</span>'}</td>
+              <td>${retryBadge(s.retry_attempted, s.retry_still_invalid)}</td>
               <td>${s.latency_ms ? (s.latency_ms / 1000).toFixed(1) + 's' : '--'}</td>
             </tr>
           `).join('')}
@@ -712,10 +735,11 @@ async function loadSessionDetail(id) {
   try {
     const data = await api(`/sessions/${id}`);
     const s = data.session;
-    const gen = s.generations?.[0];
+    const vr = s.validationResult;
 
-    let validationHtml = '';
-    if (gen) {
+    // Build heuristic validation HTML for each generation attempt
+    function genValidationHtml(gen) {
+      if (!gen) return '';
       const errors = gen.validation_errors ? JSON.parse(gen.validation_errors) : [];
       const warnings = gen.validation_warnings ? JSON.parse(gen.validation_warnings) : [];
       const items = [
@@ -723,8 +747,56 @@ async function loadSessionDetail(id) {
         ...warnings.map(w => `<li class="warning">${esc(w)}</li>`),
       ];
       if (!items.length) items.push('<li class="pass">All checks passed</li>');
-      validationHtml = `<ul class="validation-list">${items.join('')}</ul>`;
+      return `<ul class="validation-list">${items.join('')}</ul>`;
     }
+
+    // Build grounded validation section
+    let groundedHtml = '';
+    if (vr) {
+      const pkgLine = vr.first_attempt_invalid_package_names
+        ? `<li class="error">Invalid packages: ${esc(vr.first_attempt_invalid_package_names)}</li>`
+        : `<li class="pass">${vr.first_attempt_valid_packages} packages verified</li>`;
+      const optLine = vr.first_attempt_invalid_option_paths
+        ? `<li class="error">Invalid options: ${esc(vr.first_attempt_invalid_option_paths)}</li>`
+        : `<li class="pass">${vr.first_attempt_valid_options} options verified</li>`;
+      let retryLine = '';
+      if (vr.retry_attempted) {
+        if (vr.retry_still_invalid === 0) retryLine = '<li class="pass">Retry: resolved all issues</li>';
+        else if (vr.retry_invalid_packages || vr.retry_invalid_options) {
+          retryLine = `<li class="error">Retry: still invalid — pkgs: ${esc(vr.retry_invalid_packages || 'none')}, opts: ${esc(vr.retry_invalid_options || 'none')}</li>`;
+        } else {
+          retryLine = '<li class="warning">Retry: attempted, outcome unknown</li>';
+        }
+      }
+      groundedHtml = `
+        <div class="detail-section">
+          <div class="detail-section-title">Grounded Validation</div>
+          <ul class="validation-list">${pkgLine}${optLine}${retryLine}</ul>
+        </div>`;
+    }
+
+    // Build per-attempt sections
+    const genSections = (s.generations || []).map(gen => `
+      <div class="detail-section">
+        <div class="detail-section-title">Attempt ${gen.attempt} — Heuristic Validation</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+          Latency: ${gen.latency_ms ? (gen.latency_ms/1000).toFixed(1)+'s' : '--'} &nbsp;|&nbsp;
+          Tokens: ${gen.input_tokens ?? '?'} in / ${gen.output_tokens ?? '?'} out &nbsp;|&nbsp;
+          Hash: ${gen.config_hash ? gen.config_hash.substring(0,12)+'...' : '--'}
+        </div>
+        ${genValidationHtml(gen)}
+      </div>
+      ${gen.config_text ? `
+        <div class="detail-section">
+          <div class="detail-section-title">Attempt ${gen.attempt} — Configuration</div>
+          <div class="code-block">${esc(gen.config_text)}</div>
+        </div>` : ''}
+      ${gen.docs_text ? `
+        <div class="detail-section">
+          <div class="detail-section-title">Attempt ${gen.attempt} — Documentation</div>
+          <div class="code-block">${esc(gen.docs_text)}</div>
+        </div>` : ''}
+    `).join('');
 
     detail.innerHTML = `
       <div class="detail-panel">
@@ -740,11 +812,6 @@ async function loadSessionDetail(id) {
           <div class="meta-item"><div class="meta-label">Flagged</div><div class="meta-value">${s.input_flagged ? 'Yes' : 'No'}</div></div>
           ${s.hardware_keywords ? `<div class="meta-item"><div class="meta-label">Hardware</div><div class="meta-value">${esc(s.hardware_keywords)}</div></div>` : ''}
           ${s.usecase_keywords ? `<div class="meta-item"><div class="meta-label">Use Case</div><div class="meta-value">${esc(s.usecase_keywords)}</div></div>` : ''}
-          ${gen ? `
-            <div class="meta-item"><div class="meta-label">Latency</div><div class="meta-value">${gen.latency_ms ? (gen.latency_ms / 1000).toFixed(1) + 's' : '--'}</div></div>
-            <div class="meta-item"><div class="meta-label">Tokens</div><div class="meta-value">${gen.input_tokens ?? '?'} in / ${gen.output_tokens ?? '?'} out</div></div>
-            <div class="meta-item"><div class="meta-label">Config Hash</div><div class="meta-value">${gen.config_hash ? gen.config_hash.substring(0, 12) + '...' : '--'}</div></div>
-          ` : ''}
         </div>
 
         <div class="detail-section">
@@ -752,24 +819,8 @@ async function loadSessionDetail(id) {
           <div class="code-block">${esc(s.raw_intent || '(none)')}</div>
         </div>
 
-        <div class="detail-section">
-          <div class="detail-section-title">Validation</div>
-          ${validationHtml || '<div class="empty-state">No generation data</div>'}
-        </div>
-
-        ${gen?.config_text ? `
-          <div class="detail-section">
-            <div class="detail-section-title">Generated Configuration</div>
-            <div class="code-block">${esc(gen.config_text)}</div>
-          </div>
-        ` : ''}
-
-        ${gen?.docs_text ? `
-          <div class="detail-section">
-            <div class="detail-section-title">Generated Documentation</div>
-            <div class="code-block">${esc(gen.docs_text)}</div>
-          </div>
-        ` : ''}
+        ${groundedHtml}
+        ${genSections}
       </div>
     `;
   } catch (e) {
@@ -874,6 +925,12 @@ function validationBadge(passed, flagged) {
   let html = passed ? '<span class="badge badge-pass">PASS</span>' : '<span class="badge badge-fail">FAIL</span>';
   if (flagged) html += ' <span class="badge badge-flag">FLAGGED</span>';
   return html;
+}
+
+function retryBadge(retryAttempted, retryStillInvalid) {
+  if (!retryAttempted) return '<span class="badge badge-null">--</span>';
+  if (retryStillInvalid === 0) return '<span class="badge badge-pass">FIXED</span>';
+  return '<span class="badge badge-fail">WARN</span>';
 }
 
 // ── Auto-login if token saved ──

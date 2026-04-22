@@ -6,7 +6,7 @@ import { createHash, randomUUID } from 'crypto';
 
 import * as prompts from './src/prompts.js';
 import * as db from './src/db.js';
-import { validate } from './src/validator.js';
+import { validate, extractPackageReferences, extractOptionReferences } from './src/validator.js';
 import { router as adminRouter } from './src/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -161,7 +161,7 @@ app.post('/api/generate', async (req, res) => {
     const { config, docs } = parseResponse(rawContent);
     const latencyMs = Date.now() - startTime;
 
-    // Validate and log
+    // Heuristic validation (unchanged)
     const validation = validate(rawContent);
     const configHash = config ? createHash('sha256').update(config).digest('hex') : null;
 
@@ -179,9 +179,137 @@ app.post('/api/generate', async (req, res) => {
       console.warn(`[SECURITY] Session ${sessionId}: ${validation.securityFlags.join('; ')}`);
     }
 
+    // Grounded validation against nixos.db
+    let finalConfig = config;
+    let finalDocs = docs;
+
+    if (db.isValidationEnabled() && config) {
+      let pkgResult, optResult;
+      try {
+        const packages = extractPackageReferences(config);
+        const options = extractOptionReferences(config);
+        pkgResult = db.validatePackages(packages);
+        optResult = db.validateOptions(options);
+        console.log(`[GROUNDED] ${sessionId}: pkgs=${packages.length} (${pkgResult.invalid.length} invalid) opts=${options.length} (${optResult.invalid.length} invalid)`);
+      } catch (err) {
+        console.error(`[GROUNDED] ${sessionId}: extraction error: ${err.message}`);
+      }
+
+      if (pkgResult && (pkgResult.invalid.length > 0 || optResult.invalid.length > 0)) {
+        // Build retry prompt
+        const retryLines = ['The previous generation referenced packages or options that do not exist in nixpkgs 25.11:'];
+        if (pkgResult.invalid.length) retryLines.push(`- Invalid packages: ${pkgResult.invalid.join(', ')}`);
+        if (optResult.invalid.length) retryLines.push(`- Invalid option paths: ${optResult.invalid.join(', ')}`);
+        retryLines.push('', 'Regenerate the configuration using only real packages and options from nixpkgs 25.11. If you cannot fulfill a request because the required package does not exist, state that plainly in the documentation rather than inventing a name.');
+        const retryMsg = retryLines.join('\n');
+
+        let retryPkgResult = null, retryOptResult = null;
+        let retryFailed = false;
+
+        try {
+          const retryStart = Date.now();
+          const retryResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'HTTP-Referer': 'https://livingfractal.com',
+              'X-Title': 'Living Fractal',
+            },
+            body: JSON.stringify({
+              model: MODEL,
+              messages: [
+                { role: 'system', content: prompt.content },
+                { role: 'user', content: sanitized.text },
+                { role: 'assistant', content: rawContent },
+                { role: 'user', content: retryMsg },
+              ],
+              temperature: 0.3,
+              max_tokens: 8000,
+            }),
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            const retryRaw = retryData.choices?.[0]?.message?.content;
+            if (retryRaw) {
+              const retryParsed = parseResponse(retryRaw);
+              const retryValidation = validate(retryRaw);
+              const retryHash = retryParsed.config ? createHash('sha256').update(retryParsed.config).digest('hex') : null;
+              db.logGeneration(sessionId, 2, retryRaw, retryParsed.config, retryParsed.docs, retryValidation, retryHash,
+                Date.now() - retryStart, retryData.usage?.prompt_tokens, retryData.usage?.completion_tokens);
+
+              if (retryParsed.config) {
+                try {
+                  const rPkgs = extractPackageReferences(retryParsed.config);
+                  const rOpts = extractOptionReferences(retryParsed.config);
+                  retryPkgResult = db.validatePackages(rPkgs);
+                  retryOptResult = db.validateOptions(rOpts);
+                  console.log(`[GROUNDED] ${sessionId} retry: pkgs=${rPkgs.length} (${retryPkgResult.invalid.length} invalid) opts=${rOpts.length} (${retryOptResult.invalid.length} invalid)`);
+                } catch (err) {
+                  console.error(`[GROUNDED] ${sessionId} retry extraction error: ${err.message}`);
+                }
+              }
+
+              finalConfig = retryParsed.config || config;
+              finalDocs = retryParsed.docs || docs;
+            } else {
+              retryFailed = true;
+            }
+          } else {
+            retryFailed = true;
+            console.error(`[GROUNDED] ${sessionId}: retry API error ${retryResponse.status}`);
+          }
+        } catch (err) {
+          retryFailed = true;
+          console.error(`[GROUNDED] ${sessionId}: retry failed: ${err.message}`);
+        }
+
+        const retryStillInvalid = retryFailed
+          || (retryPkgResult !== null && (retryPkgResult.invalid.length > 0 || retryOptResult.invalid.length > 0));
+
+        if (retryStillInvalid) {
+          const warnPkgs = retryPkgResult?.invalid || pkgResult.invalid;
+          const warnOpts = retryOptResult?.invalid || optResult.invalid;
+          const warnLines = ['> **Validator notice.** This configuration references packages or options that could not be verified against the nixpkgs 25.11 database:', '>'];
+          if (warnPkgs.length) warnLines.push(`> - Unverified packages: ${warnPkgs.join(', ')}`);
+          if (warnOpts.length) warnLines.push(`> - Unverified option paths: ${warnOpts.join(', ')}`);
+          warnLines.push('>', '> These may be valid under a different channel or result from recent nixpkgs changes, but they may also indicate model hallucination. Review carefully before building or deploying. Test in a VM first.');
+          finalDocs = warnLines.join('\n') + '\n\n' + (finalDocs || '');
+        }
+
+        db.logValidationResult(sessionId, {
+          firstValidPkgs: pkgResult.valid.length,
+          firstInvalidPkgs: pkgResult.invalid.length,
+          firstInvalidPkgNames: pkgResult.invalid.join(',') || null,
+          firstValidOpts: optResult.valid.length,
+          firstInvalidOpts: optResult.invalid.length,
+          firstInvalidOptPaths: optResult.invalid.join(',') || null,
+          retryAttempted: 1,
+          retryStillInvalid: retryPkgResult !== null ? (retryStillInvalid ? 1 : 0) : (retryFailed ? 1 : null),
+          retryInvalidPkgs: retryPkgResult?.invalid.join(',') || null,
+          retryInvalidOpts: retryOptResult?.invalid.join(',') || null,
+        });
+
+      } else if (pkgResult) {
+        db.logValidationResult(sessionId, {
+          firstValidPkgs: pkgResult.valid.length,
+          firstInvalidPkgs: 0,
+          firstInvalidPkgNames: null,
+          firstValidOpts: optResult.valid.length,
+          firstInvalidOpts: 0,
+          firstInvalidOptPaths: null,
+          retryAttempted: 0,
+          retryStillInvalid: null,
+          retryInvalidPkgs: null,
+          retryInvalidOpts: null,
+        });
+      }
+    }
+
     return res.json({
-      config,
-      docs,
+      config: finalConfig,
+      docs: finalDocs,
       model: data.model || MODEL,
       usage: data.usage || null,
     });
@@ -214,6 +342,7 @@ app.get('/api/health', (req, res) => {
 prompts.init();
 const prompt = prompts.getLatest();
 db.init(prompt.version, prompt.content);
+db.initValidationDb();
 
 const server = createServer(app);
 server.listen(PORT, () => {
