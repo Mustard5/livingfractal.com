@@ -18,7 +18,7 @@ app.use(express.static(join(__dirname, 'public')));
 
 // ── Config ──
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = process.env.LF_MODEL || 'deepseek/deepseek-chat-v3-0324';
+const MODEL = process.env.LF_MODEL || 'deepseek/deepseek-v3.2';
 const PORT = process.env.LF_PORT || 3120;
 const OPENROUTER_TIMEOUT_MS = 150_000; // 150s — keep below NGINX's 180s proxy_read_timeout
 

@@ -42,7 +42,7 @@ Nginx (TLS termination, ports 80/443)
 - **Server**: Hetzner VPS, Ubuntu, systemd service running as www-data
 - **App location**: `/opt/livingfractal`
 - **Environment**: `.env` file with `OPENROUTER_API_KEY`, loaded by systemd `EnvironmentFile`
-- **Default model**: DeepSeek V3 via OpenRouter (configurable via `LF_MODEL` env var)
+- **Default model**: DeepSeek V3.2 via OpenRouter (`deepseek/deepseek-v3.2`, configurable via `LF_MODEL` env var)
 - **Frontend**: Static HTML/JS in `public/`, Living Fractal brand (dark theme, JetBrains Mono + Source Serif 4)
 
 ### What Exists
@@ -241,7 +241,7 @@ Currently components 1, 2, 4, and 5 are combined into a single hardcoded string 
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `OPENROUTER_API_KEY` | Yes | API key for OpenRouter LLM calls |
-| `LF_MODEL` | No | Model string (default: `deepseek/deepseek-chat-v3-0324`) |
+| `LF_MODEL` | No | Model string (default: `deepseek/deepseek-v3.2`) |
 | `LF_PORT` | No | Server port (default: 3120) |
 | `LF_ADMIN_TOKEN` | No | Bearer token for admin API endpoints (required to use admin API) |
 
