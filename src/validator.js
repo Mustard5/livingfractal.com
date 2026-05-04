@@ -122,12 +122,25 @@ const PKG_IGNORE = new Set([
   'runCommand', 'fetchFromGitHub', 'fetchurl', 'fetchgit', 'stdenv', 'mkShell',
   'pkgs', 'with', 'let', 'in', 'inherit', 'rec', 'if', 'then', 'else',
   'assert', 'null', 'true', 'false', 'import', 'builtins',
-  // Package namespace attribute sets — not leaf packages, never in the packages table
-  'linuxKernel', 'linuxPackages',
-  'python3Packages', 'python2Packages',
-  'haskellPackages', 'rubyPackages', 'perlPackages',
-  'nodePackages', 'phpPackages', 'rPackages',
 ]);
+
+// Package namespace attribute set families. A flat list can't cover versioned variants
+// (linuxPackages_latest, python312Packages, etc.) without enumerating every future name.
+const PKG_IGNORE_PATTERNS = [
+  /^linuxKernel$/,
+  /^linuxPackages(_.+)?$/,     // linuxPackages, linuxPackages_latest, _zen, _hardened, …
+  /^python\d*Packages$/,       // python2Packages, python3Packages, python311Packages, …
+  /^haskell\.?Packages$/,      // haskellPackages
+  /^ruby\d*Packages$/,
+  /^perl\d*Packages$/,
+  /^nodePackages(_.+)?$/,
+  /^phpPackages$/,
+  /^rPackages$/,
+];
+
+function isIgnoredToken(token) {
+  return PKG_IGNORE.has(token) || PKG_IGNORE_PATTERNS.some(re => re.test(token));
+}
 
 // Top-level NixOS option namespaces — anything else is likely a let binding
 export const OPTION_NAMESPACES = new Set([
@@ -142,7 +155,7 @@ export const OPTION_NAMESPACES = new Set([
 function extractWithBlock(inner) {
   const names = new Set();
   for (const m of inner.matchAll(/\b([a-zA-Z][a-zA-Z0-9_-]*)\b/g)) {
-    if (!PKG_IGNORE.has(m[1])) names.add(m[1]);
+    if (!isIgnoredToken(m[1])) names.add(m[1]);
   }
   return names;
 }
@@ -160,7 +173,7 @@ export function extractPackageReferences(nixSource) {
   // `pkgs.NAME` references (capture first segment only — pkgs.python3.withPackages → python3)
   const pkgsDotRe = /pkgs\.([a-zA-Z][a-zA-Z0-9_-]*)/g;
   while ((m = pkgsDotRe.exec(nixSource)) !== null) {
-    if (!PKG_IGNORE.has(m[1])) packages.add(m[1]);
+    if (!isIgnoredToken(m[1])) packages.add(m[1]);
   }
 
   return [...packages].sort();
