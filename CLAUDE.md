@@ -227,6 +227,7 @@ Currently components 1, 2, 4, and 5 are combined into a single hardcoded string 
 - **LLM output is buffered, not streamed** — the full response is received, validated, then delivered. User sees a loading state. This is a security trade-off.
 - **Nginx handles TLS** — Certbot/Let's Encrypt, proxy to localhost:3120
 - **systemd hardening** — NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp, ReadWritePaths=/opt/livingfractal
+- **CORS: same-origin only** — No `Access-Control-Allow-Origin` header is ever set. Browser requests from third-party origins are blocked at the `OPTIONS` preflight (204, no CORS headers) or rejected with 403 if Origin is present and doesn't match `LF_ALLOWED_ORIGIN` (default: `https://livingfractal.com`). Non-browser callers (curl, server-to-server) send no Origin header and are unaffected. Integrators who need programmatic browser access from another origin should self-host the open-source toolchain.
 
 ## File Conventions
 
@@ -243,6 +244,7 @@ Currently components 1, 2, 4, and 5 are combined into a single hardcoded string 
 | `OPENROUTER_API_KEY` | Yes | API key for OpenRouter LLM calls |
 | `LF_MODEL` | No | Model string (default: `deepseek/deepseek-v3.2`) |
 | `LF_PORT` | No | Server port (default: 3120) |
+| `LF_ALLOWED_ORIGIN` | No | Allowed browser origin for CORS (default: `https://livingfractal.com`) |
 | `LF_ADMIN_TOKEN` | No | Bearer token for admin API endpoints (required to use admin API) |
 
 ---

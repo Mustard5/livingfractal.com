@@ -20,6 +20,7 @@ app.use(express.static(join(__dirname, 'public')));
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = process.env.LF_MODEL || 'deepseek/deepseek-v3.2';
 const PORT = process.env.LF_PORT || 3120;
+const ALLOWED_ORIGIN = process.env.LF_ALLOWED_ORIGIN || 'https://livingfractal.com';
 const OPENROUTER_TIMEOUT_MS = 150_000; // 150s — keep below NGINX's 180s proxy_read_timeout
 
 if (!OPENROUTER_API_KEY) {
@@ -124,6 +125,25 @@ async function callOpenRouter(messages, sessionId, label) {
     clearTimeout(timer);
   }
 }
+
+// ── CORS policy ──
+// Same-origin only. The public UI at livingfractal.com is the only permitted
+// browser client. No third-party origins are allowed — integrators who need
+// programmatic access from another origin should self-host the open-source
+// toolchain. Non-browser callers (curl, server-to-server) send no Origin
+// header and are unaffected by this policy.
+app.use('/api', (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    // Preflight with no Access-Control-Allow-Origin: browser blocks the request.
+    return res.status(204).end();
+  }
+  const origin = req.headers['origin'];
+  if (origin && origin !== ALLOWED_ORIGIN) {
+    console.warn(`[CORS] Rejected cross-origin request from ${origin}`);
+    return res.status(403).json({ error: 'cross-origin requests not permitted' });
+  }
+  next();
+});
 
 // ── Generation endpoint ──
 app.post('/api/generate', async (req, res) => {
