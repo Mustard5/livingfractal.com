@@ -16,6 +16,17 @@ CHANNEL = 'stable'
 PACKAGES_JSON = SOURCES_DIR / 'packages.json'
 TIMEOUT_SECS = 600   # 10 minutes
 
+# Alias attr_paths that nix-env -qaP does not enumerate because they are
+# not exposed via lib.recurseIntoAttrs. These are valid attribute paths
+# that users commonly write in NixOS configs. Resolved via nix-instantiate
+# at sync time so the packages table stays current with the channel default.
+NONSTD_ALIASES = [
+    'python3',
+    'python313',
+    'nodejs',
+    'nodejs_22',
+]
+
 
 def normalize_license(raw):
     if raw is None:
@@ -33,6 +44,80 @@ def normalize_license(raw):
     if isinstance(raw, dict):
         return raw.get('spdxId') or raw.get('fullName')
     return str(raw)
+
+
+def ensure_alias_columns(db):
+    """Idempotently add is_alias column to an existing packages table."""
+    cols = {row[1] for row in db.execute('PRAGMA table_info(packages)')}
+    if 'is_alias' not in cols:
+        db.execute('ALTER TABLE packages ADD COLUMN is_alias INTEGER NOT NULL DEFAULT 0')
+        db.commit()
+
+
+def resolve_alias(alias_name, log):
+    """Resolve an alias attr_path to (version, description) via nix-instantiate --eval.
+
+    Returns (version_str, description_str_or_None) or None if resolution fails.
+    """
+    try:
+        r = run_nix(
+            ['nix-instantiate', '--eval', '-E',
+             f'with import <nixpkgs> {{}}; {alias_name}.version'],
+            capture_output=True, timeout=60,
+        )
+        if r.returncode != 0:
+            log.warning(f'Alias {alias_name}: nix-instantiate exited {r.returncode}: '
+                        f'{r.stderr.decode(errors="replace")[:200]}')
+            return None
+        version = r.stdout.decode().strip().strip('"')
+        if not version:
+            log.warning(f'Alias {alias_name}: empty version string')
+            return None
+
+        # Best-effort description — not all attrs expose meta.description cleanly
+        description = None
+        r_desc = run_nix(
+            ['nix-instantiate', '--eval', '-E',
+             f'with import <nixpkgs> {{}}; {alias_name}.meta.description'],
+            capture_output=True, timeout=60,
+        )
+        if r_desc.returncode == 0:
+            raw = r_desc.stdout.decode().strip().strip('"')
+            description = raw if raw else None
+
+        return version, description
+
+    except Exception as exc:
+        log.warning(f'Alias {alias_name}: resolution error: {exc}')
+        return None
+
+
+def sync_nonstd_aliases(log, db, ts):
+    """Insert alias attr_paths that nix-env -qaP does not enumerate."""
+    inserted = skipped = 0
+    for alias in NONSTD_ALIASES:
+        result = resolve_alias(alias, log)
+        if result is None:
+            log.warning(f'Alias {alias}: skipped (could not resolve)')
+            skipped += 1
+            continue
+        version, description = result
+        db.execute(
+            """INSERT INTO packages
+                 (name, version, description, homepage, license,
+                  channel, last_synced, is_alias)
+               VALUES (?,?,?,NULL,NULL,?,?,1)
+               ON CONFLICT(name) DO UPDATE SET
+                 version     = excluded.version,
+                 description = COALESCE(excluded.description, packages.description),
+                 is_alias    = 1,
+                 last_synced = excluded.last_synced""",
+            (alias, version, description, CHANNEL, ts),
+        )
+        log.info(f'Alias {alias}: v{version}')
+        inserted += 1
+    log.info(f'Nonstd aliases: {inserted} inserted/updated, {skipped} skipped')
+    return inserted
 
 
 def fetch_packages(log):
@@ -60,6 +145,9 @@ def sync(log, db):
     rows_upserted = 0
     rows_deleted = 0
     try:
+        # Migrate schema for existing DBs before any queries that use is_alias
+        ensure_alias_columns(db)
+
         if not PACKAGES_JSON.exists():
             fetch_packages(log)
         else:
@@ -76,7 +164,11 @@ def sync(log, db):
         log.info(f'Parsed {len(data):,} packages')
 
         ts = now_utc()
-        existing = {row[0] for row in db.execute('SELECT name FROM packages')}
+        # Only track nix-env entries for stale detection — alias rows are
+        # managed separately and must not be pruned by this loop.
+        existing = {row[0] for row in db.execute(
+            'SELECT name FROM packages WHERE is_alias=0'
+        )}
         seen = set()
 
         log.info('Upserting packages...')
@@ -88,13 +180,15 @@ def sync(log, db):
                     homepage = homepage[0] if homepage else None
                 db.execute(
                     """INSERT INTO packages
-                         (name, version, description, homepage, license, channel, last_synced)
-                       VALUES (?,?,?,?,?,?,?)
+                         (name, version, description, homepage, license,
+                          channel, last_synced, is_alias)
+                       VALUES (?,?,?,?,?,?,?,0)
                        ON CONFLICT(name) DO UPDATE SET
                          version       = excluded.version,
                          description   = excluded.description,
                          homepage      = excluded.homepage,
                          license       = excluded.license,
+                         is_alias      = 0,
                          last_synced   = excluded.last_synced""",
                     (
                         attr_path,
@@ -113,9 +207,22 @@ def sync(log, db):
             rows_deleted = len(stale)
             if stale:
                 log.info(f'Removing {rows_deleted} stale packages')
-                db.executemany('DELETE FROM packages WHERE name=?',
-                               [(n,) for n in stale])
+                # Only delete nix-env entries; alias rows are not in `seen`
+                # and must not be treated as stale.
+                db.executemany(
+                    'DELETE FROM packages WHERE name=? AND is_alias=0',
+                    [(n,) for n in stale],
+                )
 
+        # Resolve and insert alias attr_paths not present in nix-env output.
+        # This runs after the nix-env upsert so that if an alias later
+        # appears in nix-env it will already be is_alias=0 by the time we
+        # reach here and the ON CONFLICT above will have set is_alias=0.
+        log.info('Syncing nonstd aliases...')
+        with db:
+            sync_nonstd_aliases(log, db, ts)
+
+        # Rebuild FTS5 index after both nix-env packages and aliases are in place.
         log.info('Rebuilding FTS5 index for packages...')
         with db:
             db.execute("DELETE FROM search_index WHERE source_table='packages'")

@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS packages (
   homepage     TEXT,
   license      TEXT,
   channel      TEXT NOT NULL,
-  last_synced  DATETIME NOT NULL
+  last_synced  DATETIME NOT NULL,
+  is_alias     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS options (
