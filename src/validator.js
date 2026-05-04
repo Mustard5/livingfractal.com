@@ -122,6 +122,11 @@ const PKG_IGNORE = new Set([
   'runCommand', 'fetchFromGitHub', 'fetchurl', 'fetchgit', 'stdenv', 'mkShell',
   'pkgs', 'with', 'let', 'in', 'inherit', 'rec', 'if', 'then', 'else',
   'assert', 'null', 'true', 'false', 'import', 'builtins',
+  // Package namespace attribute sets — not leaf packages, never in the packages table
+  'linuxKernel', 'linuxPackages',
+  'python3Packages', 'python2Packages',
+  'haskellPackages', 'rubyPackages', 'perlPackages',
+  'nodePackages', 'phpPackages', 'rPackages',
 ]);
 
 // Top-level NixOS option namespaces — anything else is likely a let binding
