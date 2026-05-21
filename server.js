@@ -98,8 +98,17 @@ function parseResponse(raw) {
 }
 
 // ── OpenRouter call with hard timeout ──
-async function callOpenRouter(messages, sessionId, label) {
+// externalSignal: optional AbortSignal from the request lifecycle. Abort
+// is forwarded via addEventListener/removeEventListener rather than
+// AbortSignal.any() — the any() approach leaves a listener on externalSignal
+// after the fetch settles, causing a DOMException [AbortError] in Node.js 22
+// when the signal fires post-response (e.g. client closes after receiving data).
+async function callOpenRouter(messages, sessionId, label, externalSignal) {
   const controller = new AbortController();
+
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+
   const timer = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
   try {
     return await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -115,6 +124,12 @@ async function callOpenRouter(messages, sessionId, label) {
     });
   } catch (err) {
     if (err.name === 'AbortError') {
+      if (externalSignal?.aborted) {
+        console.log(`[DISCONNECT] ${sessionId} ${label}: aborted — client disconnected`);
+        const e = new Error('client_disconnected');
+        e.name = 'client_disconnected';
+        throw e;
+      }
       console.error(`[TIMEOUT] ${sessionId} ${label}: timed out after ${OPENROUTER_TIMEOUT_MS}ms`);
       const e = new Error('upstream_timeout');
       e.name = 'upstream_timeout';
@@ -123,6 +138,7 @@ async function callOpenRouter(messages, sessionId, label) {
     throw err;
   } finally {
     clearTimeout(timer);
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
   }
 }
 
@@ -167,6 +183,16 @@ app.post('/api/generate', async (req, res) => {
     console.warn(`[FLAGGED] Suspicious input from ${clientIp}: ${sanitized.text.substring(0, 100)}...`);
   }
 
+  // Abort signal shared across both OpenRouter calls in this request. Fired on
+  // client disconnect so in-flight LLM calls are cancelled immediately rather
+  // than running to completion and discarding their results.
+  // Use res.on('close') not req.on('close') — nginx half-closes the upstream
+  // connection after sending the proxied request body, which fires req.close
+  // immediately and falsely on every request. res.close fires only when the
+  // browser actually drops the connection (nginx propagates client abort).
+  const reqAborter = new AbortController();
+  res.on('close', () => { if (!res.writableEnded) reqAborter.abort(); });
+
   // Session tracking
   const sessionId = randomUUID();
   const prompt = prompts.getLatest();
@@ -179,7 +205,7 @@ app.post('/api/generate', async (req, res) => {
     const response = await callOpenRouter([
       { role: 'system', content: prompt.content },
       { role: 'user', content: sanitized.text },
-    ], sessionId, 'attempt 1');
+    ], sessionId, 'attempt 1', reqAborter.signal);
 
     if (!response.ok) {
       const errBody = await response.text();
@@ -249,7 +275,7 @@ app.post('/api/generate', async (req, res) => {
             { role: 'user', content: sanitized.text },
             { role: 'assistant', content: rawContent },
             { role: 'user', content: retryMsg },
-          ], sessionId, 'retry');
+          ], sessionId, 'retry', reqAborter.signal);
 
           if (retryResponse.ok) {
             const retryData = await retryResponse.json();
@@ -283,6 +309,7 @@ app.post('/api/generate', async (req, res) => {
             console.error(`[GROUNDED] ${sessionId}: retry API error ${retryResponse.status}`);
           }
         } catch (err) {
+          if (err.name === 'client_disconnected') throw err;
           retryFailed = true;
           console.error(`[GROUNDED] ${sessionId}: retry failed: ${err.message}`);
         }
@@ -337,6 +364,12 @@ app.post('/api/generate', async (req, res) => {
     });
 
   } catch (err) {
+    if (err.name === 'client_disconnected') {
+      // callOpenRouter already logged the abort. Session exists in DB with no
+      // generation record — identifiable in the admin dashboard as a disconnect.
+      console.log(`[DISCONNECT] ${sessionId}: handler exiting — no response written`);
+      return;
+    }
     if (err.name === 'upstream_timeout') {
       return res.status(504).json({ error: 'Generation timed out. Please try again.' });
     }

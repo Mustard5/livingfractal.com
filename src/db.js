@@ -281,6 +281,12 @@ export function getStats() {
     `SELECT COUNT(*) as count FROM validation_results WHERE retry_attempted = 1 AND retry_still_invalid = 0`
   ).get().count;
 
+  const disconnectCount = db.prepare(`
+    SELECT COUNT(*) as count FROM sessions
+    WHERE NOT EXISTS (SELECT 1 FROM session_generations WHERE session_id = sessions.id)
+    AND created_at < datetime('now', '-5 seconds')
+  `).get().count;
+
   return {
     totalSessions: total,
     last24h,
@@ -294,6 +300,7 @@ export function getStats() {
       retriesAttempted: retryCount,
       retriesFixed: retryFixed,
     },
+    disconnectCount,
   };
 }
 
