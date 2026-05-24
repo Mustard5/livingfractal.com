@@ -56,6 +56,12 @@ This is a prototype. The validation layer that grounds output against the real n
 
 Progress is being made in the open. Follow along or try to break it — both are useful.
 
+## Known limitations
+
+**Timeouts on complex prompts.** Dense descriptions with many requirements (custom window manager, full disk encryption, multiple services, security hardening) can take longer than the server's timeout allows, returning a 504 error. If this happens, retry or split your description into a simpler first pass.
+
+**Intermittent model refusals.** The model occasionally responds to a valid prompt with a one-line refusal instead of generating a configuration. This is a fluke on the model provider's side, not a problem with your input. Retrying immediately almost always succeeds.
+
 ## Feedback
 
 Open an issue, or reach out on X: [@mustard5](https://x.com/mustard5)
