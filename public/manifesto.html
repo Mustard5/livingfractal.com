@@ -534,12 +534,21 @@
   </div>
 
   <footer>
-    <p><a href="/">Generator</a> · <a href="/manifesto">Manifesto</a> · <a href="#">GitHub</a></p>
+    <p><a href="/">Generator</a> &middot; <a href="/manifesto">Manifesto</a> &middot; <a href="https://github.com/Mustard5/livingfractal.com" target="_blank" rel="noopener">GitHub</a></p>
+    <p style="margin-top:8px;"><a id="contact-email" href="#">contact</a> &middot; <a href="https://x.com/mustard5" target="_blank" rel="noopener">@mustard5</a></p>
   </footer>
 
 </div>
 
 <script>
+// Contact email (assembled by JS to deter scrapers)
+(function() {
+  var u = 'livingfractal.com.outspoken262';
+  var d = 'simplelogin' + '.com';
+  var el = document.getElementById('contact-email');
+  if (el) { el.href = 'mailto:' + u + '@' + d; el.textContent = u + '@' + d; }
+})();
+
 // Reading progress bar
 window.addEventListener('scroll', () => {
   const h = document.documentElement;
