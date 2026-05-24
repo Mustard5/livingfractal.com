@@ -201,10 +201,12 @@ app.post('/api/generate', async (req, res) => {
   db.createSession(sessionId, MODEL, prompt.version);
   db.logIntent(sessionId, description, sanitized.text, sanitized.flagged);
 
+  const wrappedInput = `<user_intent>\n${sanitized.text}\n</user_intent>`;
+
   try {
     const response = await callOpenRouter([
       { role: 'system', content: prompt.content },
-      { role: 'user', content: sanitized.text },
+      { role: 'user', content: wrappedInput },
     ], sessionId, 'attempt 1', reqAborter.signal);
 
     if (!response.ok) {
@@ -272,7 +274,7 @@ app.post('/api/generate', async (req, res) => {
           const retryStart = Date.now();
           const retryResponse = await callOpenRouter([
             { role: 'system', content: prompt.content },
-            { role: 'user', content: sanitized.text },
+            { role: 'user', content: wrappedInput },
             { role: 'assistant', content: rawContent },
             { role: 'user', content: retryMsg },
           ], sessionId, 'retry', reqAborter.signal);
