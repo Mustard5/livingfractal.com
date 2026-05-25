@@ -388,6 +388,10 @@ app.get('/manifesto', (req, res) => {
   res.sendFile(join(__dirname, 'public/manifesto.html'));
 });
 
+app.get('/referrals', (req, res) => {
+  res.sendFile(join(__dirname, 'public/referrals.html'));
+});
+
 app.get('/admin', (req, res) => {
   res.sendFile(join(__dirname, 'public/admin.html'));
 });

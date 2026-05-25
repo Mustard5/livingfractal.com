@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Living Fractal — Referrals</title>
+<meta name="description" content="Services I genuinely use and recommend. Referral links that support this work — and often get you a bonus too.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0c0f;
+    --bg-card: #0f1216;
+    --bg-card-hover: #141920;
+    --border-dim: #1a1f28;
+    --border-active: #2a3444;
+    --text-primary: #c8cdd5;
+    --text-secondary: #6b7280;
+    --text-muted: #3d4554;
+    --accent-green: #4ade80;
+    --accent-green-dim: rgba(74, 222, 128, 0.08);
+    --accent-green-glow: rgba(74, 222, 128, 0.15);
+    --accent-blue: #60a5fa;
+    --glow-green: rgba(74, 222, 128, 0.06);
+    --glow-blue: rgba(96, 165, 250, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Source Serif 4', Georgia, serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(74,222,128,0.03), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(96,165,250,0.02), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Header / Nav ── */
+  header {
+    padding: 48px 0 0;
+  }
+
+  .top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-green);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .brand::before {
+    content: '◆';
+    font-size: 8px;
+    opacity: 0.6;
+  }
+
+  .nav-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--accent-green);
+    border-color: rgba(74,222,128,0.3);
+    background: rgba(74,222,128,0.06);
+  }
+
+  /* ── Page hero ── */
+  .page-hero {
+    padding: 64px 0 48px;
+    border-bottom: 1px solid var(--border-dim);
+    margin-bottom: 56px;
+  }
+
+  .page-hero h1 {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 300;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  .page-hero .subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    font-weight: 300;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── Referral cards ── */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 56px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px;
+    padding: 24px 26px 22px;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .card-name {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .card-arrow {
+    font-size: 1rem;
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .card:hover .card-arrow {
+    color: var(--accent-green);
+    transform: translate(2px, -2px);
+  }
+
+  .card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-weight: 300;
+    margin-bottom: 12px;
+  }
+
+  .card-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-green);
+    opacity: 0.7;
+  }
+
+  /* ── Donation card ── */
+  .donate-section {
+    margin-bottom: 56px;
+  }
+
+  .donate-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px;
+    padding: 24px 26px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.25s ease;
+  }
+
+  .donate-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-active);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  }
+
+  .donate-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: var(--accent-green-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.25s ease;
+  }
+
+  .donate-card:hover .donate-icon {
+    background: var(--accent-green-glow);
+  }
+
+  .donate-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--accent-green);
+  }
+
+  .donate-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .donate-title {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+
+  .donate-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .donate-arrow {
+    font-size: 1rem;
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .donate-card:hover .donate-arrow {
+    color: var(--accent-green);
+    transform: translate(2px, -2px);
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border-dim);
+    padding: 32px 0;
+    text-align: center;
+  }
+
+  footer p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  footer a:hover { color: var(--accent-green); }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .top-nav { animation: fadeUp 0.5s ease both; }
+  .page-hero { animation: fadeUp 0.5s ease 0.08s both; }
+  .cards { animation: fadeUp 0.5s ease 0.15s both; }
+  .donate-section { animation: fadeUp 0.5s ease 0.2s both; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .page-hero { padding: 48px 0 36px; }
+    .card { padding: 18px 18px 16px; }
+    .donate-card { padding: 18px; gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <header>
+    <div class="top-nav">
+      <a class="brand" href="/">Living Fractal</a>
+      <a class="nav-link" href="/">Try the generator →</a>
+    </div>
+  </header>
+
+  <div class="page-hero">
+    <h1>Referrals</h1>
+    <p class="subtitle">Services I genuinely use and recommend. These links support this work — and usually get you a bonus too.</p>
+  </div>
+
+  <div class="section-label">Recommended services</div>
+
+  <div class="cards">
+
+    <a class="card" href="https://pr.tn/ref/5XBVZGVYNBG0" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-name">Proton</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <p class="card-desc">End-to-end encrypted email, VPN, and cloud storage from Switzerland. Your data stays private — not even Proton can read it. Built for those who take privacy seriously.</p>
+      <span class="card-tag">Privacy</span>
+    </a>
+
+    <a class="card" href="https://go.zoho.com/aRv" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-name">Zoho Mail</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <p class="card-desc">Professional email hosting with your own domain — free for up to 5 users. Clean interface, no ads, privacy-focused. A solid alternative to Google Workspace when you just need reliable email.</p>
+      <span class="card-tag">Email</span>
+    </a>
+
+    <a class="card" href="https://coinbase.com/join/YBMD3C7?src=referral-link" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-name">Coinbase</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <p class="card-desc">Sign up and we both get $10 in Bitcoin. A straightforward on-ramp to crypto — Bitcoin, Ethereum, and the broader ecosystem. Win-win for the curious.</p>
+      <span class="card-tag">Crypto</span>
+    </a>
+
+    <a class="card" href="https://ally.com/referral?code=7V9X8C8N7X" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-name">Ally Bank</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <p class="card-desc">High-yield savings with no monthly fees or minimums. Fully online, FDIC insured, consistently competitive rates. Your money works harder without the brick-and-mortar overhead.</p>
+      <span class="card-tag">Finance</span>
+    </a>
+
+    <a class="card" href="https://g.co/fi/r/XKCAM8" target="_blank" rel="noopener">
+      <div class="card-top">
+        <span class="card-name">Google Fi</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <p class="card-desc">Flexible wireless with coverage in 200+ countries. Pay for what you use, automatic network switching, free data-only SIMs for tablets. Great for travelers and minimalists.</p>
+      <span class="card-tag">Mobile</span>
+    </a>
+
+  </div>
+
+  <div class="donate-section">
+    <div class="section-label">Support this work</div>
+    <a class="donate-card" href="https://nowpayments.io/donation?api_key=48463ffc-54ea-46b5-8cdd-b4857bbec396" target="_blank" rel="noopener noreferrer">
+      <div class="donate-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      </div>
+      <div class="donate-body">
+        <div class="donate-title">Donate Crypto</div>
+        <p class="donate-desc">Send Bitcoin, Ethereum, or 200+ other coins via NOWPayments. No account needed — just pick a coin and an amount.</p>
+      </div>
+      <span class="donate-arrow">↗</span>
+    </a>
+  </div>
+
+  <footer>
+    <p><a href="/">Generator</a> &middot; <a href="/manifesto">Manifesto</a> &middot; <a href="/referrals">Referrals</a> &middot; <a href="https://github.com/Mustard5/livingfractal.com" target="_blank" rel="noopener">GitHub</a></p>
+    <p style="margin-top:8px;"><a id="contact-email" href="#">contact</a> &middot; <a href="https://x.com/mustard5" target="_blank" rel="noopener">@mustard5</a> &middot; <a href="https://t.me/mustardlee" target="_blank" rel="noopener">Telegram</a></p>
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  var u = 'livingfractal.com.outspoken262';
+  var d = 'simplelogin' + '.com';
+  var el = document.getElementById('contact-email');
+  if (el) { el.href = 'mailto:' + u + '@' + d; el.textContent = u + '@' + d; }
+})();
+</script>
+
+</body>
+</html>
