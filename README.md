@@ -60,7 +60,7 @@ Progress is being made in the open. Follow along or try to break it — both are
 
 ## Known limitations
 
-**Timeouts on complex prompts.** Dense descriptions with many requirements (custom window manager, full disk encryption, multiple services, security hardening) can take longer than the server's timeout allows, returning a 504 error. If this happens, retry or split your description into a simpler first pass.
+**Slow on complex prompts.** Dense descriptions with many requirements (custom window manager, full disk encryption, multiple services, security hardening) can take a couple of minutes to generate, since the server validates the result against the nixpkgs database and regenerates if needed. The page shows a progress indicator and waits for the result — it no longer times out.
 
 **Intermittent model refusals.** The model occasionally responds to a valid prompt with a one-line refusal instead of generating a configuration. This is a fluke on the model provider's side, not a problem with your input. Retrying immediately almost always succeeds.
 

@@ -696,6 +696,46 @@ function downloadConfig() {
   URL.revokeObjectURL(url);
 }
 
+// ── Poll a detached generation job until it resolves ──
+// Returns the result payload on success; throws on error / expiry / timeout.
+// Transient network blips are tolerated — only an explicit error status or the
+// overall deadline ends polling.
+async function pollForResult(sessionId, status) {
+  const POLL_MS = 2000;
+  const DEADLINE = Date.now() + 5 * 60 * 1000; // 5 min hard cap
+  let dots = 0;
+
+  while (Date.now() < DEADLINE) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+
+    let res;
+    try {
+      res = await fetch('/api/status/' + encodeURIComponent(sessionId));
+    } catch (e) {
+      continue; // network blip — keep polling
+    }
+
+    if (res.status === 404) {
+      throw new Error('This session expired before it finished. Please try again.');
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (data.status === 'error') {
+      throw new Error(data.error || 'Generation failed.');
+    }
+    if (data.status === 'done') {
+      return data;
+    }
+
+    // Still running — animate the status line so the user sees progress.
+    dots = (dots + 1) % 4;
+    status.textContent = 'Generating configuration' + '.'.repeat(dots);
+  }
+
+  throw new Error('Generation timed out. Please try again.');
+}
+
 // ── Generation ──
 async function generate() {
   const desc = document.getElementById('descriptionInput').value.trim();
@@ -717,17 +757,24 @@ async function generate() {
   document.getElementById('outputSection').classList.remove('visible');
 
   try {
-    const res = await fetch('/api/generate', {
+    // Generation can run past proxy timeouts, so the server starts a detached
+    // job and returns a sessionId; we poll /api/status/:id until it resolves.
+    const startRes = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: desc }),
     });
 
-    const data = await res.json();
+    const startData = await startRes.json().catch(() => ({}));
 
-    if (!res.ok) {
-      throw new Error(data.error || 'Generation failed.');
+    if (!startRes.ok && startRes.status !== 202) {
+      throw new Error(startData.error || 'Generation failed.');
     }
+    if (!startData.sessionId) {
+      throw new Error('Generation failed to start. Please try again.');
+    }
+
+    const data = await pollForResult(startData.sessionId, status);
 
     currentConfig = data.config || '# No configuration generated';
     currentDocs = data.docs || '';

@@ -34,7 +34,8 @@ The founder is not fluent in NixOS. This is intentional — they are representat
 Nginx (TLS termination, ports 80/443)
   └─► Express/Node.js (port 3120)
         ├── Static frontend (public/)
-        ├── /api/generate — intent → OpenRouter → NixOS config
+        ├── /api/generate — starts a detached job, returns 202 {sessionId}
+        ├── /api/status/:id — poll job: running → done {config,docs} / error
         ├── /api/health — status check
         └── /manifesto — serves manifesto page
 ```
