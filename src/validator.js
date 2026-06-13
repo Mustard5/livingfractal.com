@@ -154,8 +154,20 @@ export const OPTION_NAMESPACES = new Set([
 // Extract bare identifiers from inside a `with <scope>; [ ... ]` block
 function extractWithBlock(inner) {
   const names = new Set();
-  for (const m of inner.matchAll(/\b([a-zA-Z][a-zA-Z0-9_-]*)\b/g)) {
-    if (!isIgnoredToken(m[1])) names.add(m[1]);
+  // Strip Nix comments first. Models structure package lists with section
+  // headers ("# Core", "# Development", "/* Privacy */"); without stripping,
+  // those words leak in as bogus package names and fail grounded validation,
+  // inflating invalid counts and triggering spurious warning blocks.
+  const code = inner
+    .replace(/#[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of code.matchAll(/\b([a-zA-Z][a-zA-Z0-9_-]*)\b/g)) {
+    const token = m[1];
+    // Reject title-cased tokens. Real nixpkgs attribute names start lowercase;
+    // a leading capital is almost always a prose label (Privacy, Utilities,
+    // Hyprland) rather than a package.
+    if (/^[A-Z]/.test(token)) continue;
+    if (!isIgnoredToken(token)) names.add(token);
   }
   return names;
 }

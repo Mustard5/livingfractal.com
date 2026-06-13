@@ -97,6 +97,19 @@ function parseResponse(raw) {
   return { config, docs };
 }
 
+// ── Silent refusal detection ──
+// deepseek-v3.2 occasionally answers a valid intent with a one-line refusal
+// ("I can only generate NixOS configurations.") instead of a config. It is a
+// sampling fluke, not prompt non-compliance: the same input succeeds on retry.
+// A genuine generation always carries both delimiters and runs to thousands of
+// characters, so "no delimiters AND very short" is a reliable refusal signal.
+function isLikelyRefusal(raw) {
+  if (!raw) return false; // empty content is handled separately (502)
+  const hasConfig = /===\s*CONFIGURATION\s*===/.test(raw);
+  const hasDocs = /===\s*DOCUMENTATION\s*===/.test(raw);
+  return !hasConfig && !hasDocs && raw.trim().length < 500;
+}
+
 // ── OpenRouter call with hard timeout ──
 // externalSignal: optional AbortSignal from the request lifecycle. Abort
 // is forwarded via addEventListener/removeEventListener rather than
@@ -197,6 +210,9 @@ app.post('/api/generate', async (req, res) => {
   const sessionId = randomUUID();
   const prompt = prompts.getLatest();
   const startTime = Date.now();
+  // Monotonic generation-attempt counter so every logged generation row has a
+  // distinct attempt number (refusal retry + grounded retry can both fire).
+  let genAttempt = 0;
 
   db.createSession(sessionId, MODEL, prompt.version);
   db.logIntent(sessionId, description, sanitized.text, sanitized.flagged);
@@ -215,11 +231,42 @@ app.post('/api/generate', async (req, res) => {
       return res.status(502).json({ error: 'Generation service temporarily unavailable.' });
     }
 
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content;
+    let data = await response.json();
+    let rawContent = data.choices?.[0]?.message?.content;
 
     if (!rawContent) {
       return res.status(502).json({ error: 'Empty response from generation model.' });
+    }
+
+    // ── Silent refusal auto-retry ──
+    // If the model returned a fluke refusal, log it (so it stays trackable in
+    // the admin dashboard) and regenerate once with the identical request. The
+    // retry is transparent: the user never sees the refusal.
+    if (isLikelyRefusal(rawContent)) {
+      console.warn(`[REFUSAL] ${sessionId}: silent refusal on attempt 1, regenerating once`);
+      db.logGeneration(
+        sessionId, ++genAttempt, rawContent, null, null,
+        validate(rawContent), null, Date.now() - startTime,
+        data.usage?.prompt_tokens ?? null, data.usage?.completion_tokens ?? null
+      );
+
+      const refusalRetry = await callOpenRouter([
+        { role: 'system', content: prompt.content },
+        { role: 'user', content: wrappedInput },
+      ], sessionId, 'attempt 1 refusal-retry', reqAborter.signal);
+
+      if (refusalRetry.ok) {
+        const refusalRetryData = await refusalRetry.json();
+        const refusalRetryRaw = refusalRetryData.choices?.[0]?.message?.content;
+        if (refusalRetryRaw) {
+          data = refusalRetryData;
+          rawContent = refusalRetryRaw;
+        }
+      } else {
+        console.error(`[REFUSAL] ${sessionId}: refusal-retry API error ${refusalRetry.status}`);
+      }
+      // If the retry also refused or failed, fall through with the refusal text;
+      // the heuristic validator flags it and the user can resubmit.
     }
 
     const { config, docs } = parseResponse(rawContent);
@@ -230,7 +277,7 @@ app.post('/api/generate', async (req, res) => {
     const configHash = config ? createHash('sha256').update(config).digest('hex') : null;
 
     db.logGeneration(
-      sessionId, 1, rawContent, config, docs, validation, configHash,
+      sessionId, ++genAttempt, rawContent, config, docs, validation, configHash,
       latencyMs,
       data.usage?.prompt_tokens ?? null,
       data.usage?.completion_tokens ?? null
@@ -286,7 +333,7 @@ app.post('/api/generate', async (req, res) => {
               const retryParsed = parseResponse(retryRaw);
               const retryValidation = validate(retryRaw);
               const retryHash = retryParsed.config ? createHash('sha256').update(retryParsed.config).digest('hex') : null;
-              db.logGeneration(sessionId, 2, retryRaw, retryParsed.config, retryParsed.docs, retryValidation, retryHash,
+              db.logGeneration(sessionId, ++genAttempt, retryRaw, retryParsed.config, retryParsed.docs, retryValidation, retryHash,
                 Date.now() - retryStart, retryData.usage?.prompt_tokens, retryData.usage?.completion_tokens);
 
               if (retryParsed.config) {
