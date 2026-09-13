@@ -12,6 +12,9 @@ for use by the Living Fractal generation pipeline.
 | nixos-hardware | `hardware_profiles` | 280–320 | Two-pass: enumerate + README enrich |
 
 `curated_patterns` and `security_policy` stay empty until populated manually.
+Seed curated patterns from `scripts/seed/curated_patterns.sql` (not part of nightly
+sync). After seeding, restart `livingfractal` so `src/db.js` rebuilds its in-memory
+allowlist from `requires_options` / `requires_packages`.
 
 ## Channel choice
 

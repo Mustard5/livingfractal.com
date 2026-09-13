@@ -333,6 +333,55 @@ const VALIDATION_DB_PATH = process.env.LF_VALIDATION_DB
 let validationDb = null;
 let validationEnabled = false;
 
+// In-memory allowlists rebuilt from curated_patterns at validation-DB init.
+// Flake-sourced options/packages (e.g. boot.lanzaboote.*) are absent from the
+// synced options/packages tables; curated rows keep them from false-invalid.
+let allowedOptions = new Set();
+let allowedPackages = new Set();
+
+/** Parse requires_* TEXT: prefer JSON array, fall back to comma-separated. */
+export function parseRequiresList(raw) {
+  if (raw == null) return [];
+  const s = String(raw).trim();
+  if (!s) return [];
+  if (s.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) {
+        return parsed.map(x => String(x).trim()).filter(Boolean);
+      }
+    } catch {
+      // fall through to comma-separated
+    }
+  }
+  return s.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+function loadCuratedAllowlists() {
+  allowedOptions = new Set();
+  allowedPackages = new Set();
+  if (!validationDb) return;
+  try {
+    const rows = validationDb.prepare(
+      `SELECT requires_options, requires_packages FROM curated_patterns`
+    ).all();
+    for (const row of rows) {
+      for (const opt of parseRequiresList(row.requires_options)) {
+        allowedOptions.add(opt);
+      }
+      for (const pkg of parseRequiresList(row.requires_packages)) {
+        allowedPackages.add(pkg);
+      }
+    }
+    console.log(
+      `[ALLOWLIST] Loaded ${allowedOptions.size} options, ${allowedPackages.size} packages from curated_patterns (${rows.length} rows)`
+    );
+  } catch (err) {
+    // Older DBs or missing table: keep empty allowlists and continue.
+    console.warn(`[ALLOWLIST] Could not load curated_patterns: ${err.message}`);
+  }
+}
+
 export function initValidationDb() {
   try {
     if (!existsSync(VALIDATION_DB_PATH)) {
@@ -342,9 +391,18 @@ export function initValidationDb() {
     validationDb = new Database(VALIDATION_DB_PATH, { readonly: true, fileMustExist: true });
     validationEnabled = true;
     console.log(`Validation database: ${VALIDATION_DB_PATH}`);
+    loadCuratedAllowlists();
   } catch (err) {
     console.warn(`[VALIDATION] Failed to open nixos.db (log-only mode): ${err.message}`);
   }
+}
+
+/** Test helper: expose current allowlist sizes (empty if validation off). */
+export function getAllowlistStats() {
+  return {
+    options: allowedOptions.size,
+    packages: allowedPackages.size,
+  };
 }
 
 export function isValidationEnabled() {
@@ -359,10 +417,23 @@ export function validatePackages(packages) {
       `SELECT name FROM packages WHERE name IN (${placeholders})`
     ).all(...packages);
     const validSet = new Set(rows.map(r => r.name));
-    return {
-      valid: packages.filter(p => validSet.has(p)),
-      invalid: packages.filter(p => !validSet.has(p)),
-    };
+    const valid = [];
+    const invalid = [];
+    const allowlistHits = [];
+    for (const p of packages) {
+      if (validSet.has(p)) {
+        valid.push(p);
+      } else if (allowedPackages.has(p)) {
+        valid.push(p);
+        allowlistHits.push(p);
+      } else {
+        invalid.push(p);
+      }
+    }
+    if (allowlistHits.length) {
+      console.log(`[ALLOWLIST] packages via curated_patterns: ${allowlistHits.join(', ')}`);
+    }
+    return { valid, invalid };
   } catch (err) {
     console.error(`[VALIDATION] Package query failed: ${err.message}`);
     return { valid: [], invalid: packages.slice() };
@@ -397,10 +468,28 @@ export function validateOptions(options) {
       `SELECT path FROM options WHERE path IN (${placeholders})`
     ).all(...allArr);
     const matchedPaths = new Set(rows.map(r => r.path));
-    return {
-      valid: options.filter(p => pathToVariants.get(p).some(v => matchedPaths.has(v))),
-      invalid: options.filter(p => !pathToVariants.get(p).some(v => matchedPaths.has(v))),
-    };
+    const valid = [];
+    const invalid = [];
+    const allowlistHits = [];
+    for (const path of options) {
+      const variants = pathToVariants.get(path);
+      const inTable = variants.some(v => matchedPaths.has(v));
+      if (inTable) {
+        valid.push(path);
+        continue;
+      }
+      const inAllowlist = allowedOptions.has(path) || variants.some(v => allowedOptions.has(v));
+      if (inAllowlist) {
+        valid.push(path);
+        allowlistHits.push(path);
+      } else {
+        invalid.push(path);
+      }
+    }
+    if (allowlistHits.length) {
+      console.log(`[ALLOWLIST] options via curated_patterns: ${allowlistHits.join(', ')}`);
+    }
+    return { valid, invalid };
   } catch (err) {
     console.error(`[VALIDATION] Options query failed: ${err.message}`);
     return { valid: [], invalid: options.slice() };
