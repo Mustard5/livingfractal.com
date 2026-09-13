@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test:allowlist": "node scripts/test-curated-allowlist.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
