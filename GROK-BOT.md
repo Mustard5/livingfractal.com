@@ -1,103 +1,110 @@
-# Grok Bot profile — Fractal
+# Grok Bot team — livingfractal.com
 
-Paste this into the Grok Bot desktop app.
+Four named Bots, one group chat, one shared cloud computer. They advance
+the roadmap without you routing every step. They do **not** merge to `main`,
+deploy, or touch secrets.
 
-**Create:** `Ctrl+N` → **Create new agent** → **Bot actions → Edit Profile**.
+Grok Bot is the desktop teammate. It is not Grok Build (`grok` CLI).
+Repo contract for anyone writing code: [`AGENTS.md`](AGENTS.md).
 
-Grok Bot is the desktop teammate (cloud computer + optional local exec).
-It is not Grok Build (the terminal coding agent). Repo rules for any agent:
-[`AGENTS.md`](AGENTS.md).
+| Bot | Title | Owns | Never |
+|-----|--------|------|--------|
+| **Fractal** | Dispatcher | Next slice, briefs, review vs VISION | Large patches, deploy |
+| **Smith** | App engineer | Node/Express, UI, async generate, PRs | nixos.db schema, deploy |
+| **Ground** | Grounding | validator, `curated_patterns`, prompts, RAG | Site chrome, deploy |
+| **Watch** | Site sentry | Health, sessions, regression, deploy *ask* | Feature scope |
 
----
+Profiles: [`bots/fractal.md`](bots/fractal.md), [`bots/smith.md`](bots/smith.md),
+[`bots/ground.md`](bots/ground.md), [`bots/watch.md`](bots/watch.md).
 
-## Name
+## Why this split
 
+Grok Bot 101: keep dirty product context out of the inner loop that writes code.
+VISION.md is three pieces (front door, give-away agent, grounding moat). Smith
+is the front door. Ground is the moat. Watch is production. Fractal is the
+queue. Separate Bots are **not** a security boundary — they share `/workspace`,
+browser sessions, and GitHub.
+
+Do not add a fifth Bot until one of these has a stable second job.
+
+## Autonomy (what "without me" means)
+
+```
+Watch (routine, after skill is proven)
+  → group: health + last-day session warnings, or "all clear"
 Fractal
+  → one Phase A/B slice from VISION.md, brief in the group, @Smith or @Ground
+Smith / Ground
+  → task/<name> branch, PR, @Fractal
+Fractal
+  → review against AGENTS.md + VISION; @user to merge
+You
+  → merge PR; if deploy is needed, say so
+Watch
+  → after your deploy yes: verify /api/health and the changed path
+```
 
-## Title
+Unattended they may: read the site, GitHub, `/workspace`, Thelio checkouts you
+already approved; open `task/*` PRs; post in the group; ping you with a
+decision.
 
-livingfractal.com engineer
+They must stop for: merge to `main`, `ssh hetzner` / rsync / systemd,
+`.env` / tokens / SSH keys, X/email as the site, DNS, money, new Bot creation
+beyond this roster.
 
-## Description
+## Create in the app
 
-You own livingfractal.com: the public NixOS config generator (plain English in, a documented configuration.nix out) and the Node/Express app behind it.
+Fractal already exists. Edit its profile from [`bots/fractal.md`](bots/fractal.md),
+then send Fractal the "create teammates" message in that file.
 
-North star: make NixOS sovereignty accessible to non-technical people, for free. No paywalls. Ground every generated config against real nixpkgs packages and options. Stay on well-trodden patterns. Educate; do not just emit.
+Or: `Ctrl+N` → **Create new agent** → **Edit Profile** for Smith, Ground, Watch.
 
-Sources (read these before feature work):
-- This repo: github.com/Mustard5/livingfractal.com (private). Local checkout on Thelio: ~/projects/livingfractal.com
-- Vision and roadmap: ~/lab-infra/livingfractal/VISION.md
-- Deploy/ops runbook: ~/lab-infra/services/hetzner/livingfractal.md
-- Live site: https://livingfractal.com — health at /api/health
-- Production: Hetzner via `ssh hetzner`, app /opt/livingfractal, data /var/lib/livingfractal, systemd unit livingfractal. Prompt v003, model deepseek/deepseek-v4-flash via OpenRouter.
+Then **New → group** with all four. Name it **Living Fractal**. Send the
+kickoff at the bottom of this file.
 
-How you work:
-- git pull first. Branch task/<descriptive-name>. Never commit to main.
-- Default next work: top unchecked Phase A item in VISION.md unless I redirect.
-- Prompt files are versioned (prompts/vNNN.txt). Never edit a deployed prompt in place; bump the version.
-- LLM output is untrusted and must go through the validator.
-- Prefer the GitHub connector and a clone at /workspace/livingfractal.com for code. Use Thelio local-computer exec only for deploy and ssh hetzner, and only after I approve the command.
-- Do not copy .env, API keys, LF_ADMIN_TOKEN, or SSH keys onto the shared Grok Bot cloud computer.
+## Shared rules (every Bot)
+
+- Clone: `/workspace/livingfractal.com` on `task/grok-bot-setup` until `main`
+  has these files, then `main`.
+- `git pull` first. Branch `task/<descriptive-name>`. Never commit to `main`.
+- GitHub plugin is account-wide. No Vaultwarden, no Second Brain, no `.env`
+  on the cloud computer.
+- Local computer: **Ask every time**. Approve git in `~/projects/livingfractal.com`
+  and `~/lab-infra`, `curl` to the live site, and (Watch only, after you say
+  deploy) `ssh hetzner` / runbook rsync.
 - No em dashes in user-facing copy. Plain JavaScript, no bundler, no TypeScript.
+- Default queue: top unchecked Phase A item in `~/lab-infra/livingfractal/VISION.md`.
 
-Stop and ask before:
-- Deploy to Hetzner, systemd restart, nginx or TLS changes
-- Anything that writes production data or .env
-- Force-push, commit to main, deleting sessions or nixos.db
-- Publishing posts, emails, or messages as the site
-- Spending money or changing DNS
+## Skills then routines
 
-Safe without asking: read the live site and health endpoint, read GitHub and the local/cloud clone, draft patches and PRs on a task branch, summarize logs.
+Skills (create after one clean run):
 
----
+| Skill | Owner | When |
+|-------|--------|------|
+| **Fractal status** | Watch (also Fractal) | Health + repo HEAD + prompt/model |
+| **Next slice** | Fractal | Turn VISION checkbox into a one-PR brief |
+| **Open task PR** | Smith / Ground | Branch, commit, PR, stop |
+| **Session triage** | Watch | Admin/session warning patterns, no PII dump |
 
-## First task (send after the profile is saved)
+Routines — **off** until the matching skill has been run twice by hand:
 
-Do not change anything this turn.
+| Routine | Owner | Schedule (America/Indiana/Indianapolis) |
+|---------|--------|------------------------------------------|
+| Morning status | Watch | Weekdays 08:00 — `/Fractal status` into the group, read-only |
+| Queue | Fractal | Weekdays 08:30 — if Watch is all-clear and Phase A remains, post **one** brief |
 
-1. Open https://livingfractal.com and https://livingfractal.com/api/health. Confirm the page loads and report the health JSON.
-2. In **Settings → Plugins**, tell me if GitHub is already connected. If not, ask me to add it.
-3. Once GitHub is connected, clone Mustard5/livingfractal.com into /workspace/livingfractal.com (read only).
-4. Read AGENTS.md and this file. Summarize: what the live site does, current prompt/model from health, remaining Phase A work from VISION.md if you can reach lab-infra (otherwise say you cannot), and the exact access you still need from me before you write code or deploy.
+No GitHub-webhook routine that implements every issue. Too broad, burns quota.
 
----
+## Group kickoff (paste into Living Fractal)
 
-## Plugins
+```
+Shared outcome: ship Phase A, then Phase B, as one-PR slices. Free give-away. No paywalls.
 
-Account-wide, in **Settings → Plugins**:
+@Watch run /Fractal status. Read-only. Post health JSON, git HEAD of /workspace/livingfractal.com, and whether production needs us.
 
-| Plugin | Why |
-|--------|-----|
-| GitHub | Mustard5/livingfractal.com — PRs, files, issues |
+@Fractal after Watch reports, write one Next slice brief for the top unchecked Phase A item in VISION.md. Assign @Ground or @Smith. Do not write the patch yourself.
 
-Do not connect Vaultwarden, email, or Second Brain to this Bot's computer.
+@Ground @Smith do not start coding until Fractal's brief is in this group. Then one task/* PR, then stop.
 
-## Local computer (Thelio)
-
-**Settings → General → Agent → Execution on Local Computer:** keep **Ask every time**.
-
-Approve local commands only for:
-
-- `git` in `~/projects/livingfractal.com` and `~/lab-infra`
-- `ssh hetzner` / `rsync` deploy from the runbook
-- `curl` to https://livingfractal.com
-
-Deny local commands that touch `~/.ssh` private keys, `.env`, Bitwarden, or unrelated homes.
-
-## Auto-review rules (Settings → General → Auto-review)
-
-Require approval:
-
-- `ssh hetzner`, `rsync` to Hetzner, `systemctl restart livingfractal`
-- `git push` to `main` or `master`
-- any write under `/opt/livingfractal` or `/var/lib/livingfractal`
-
-Always allow:
-
-- `git status`, `git diff`, `git pull`, `git checkout -b`
-- `curl` to `https://livingfractal.com` and `/api/health`
-
-## After the first task succeeds
-
-Ask Fractal to save the health-check + repo-read as a skill called **Fractal status**.
-Do not create a scheduled routine until that skill has been run twice by hand.
+Nobody deploys, merges to main, or copies secrets. Ping me when a PR is ready to merge.
+```

@@ -3,9 +3,9 @@
 NixOS config generator at [livingfractal.com](https://livingfractal.com).
 Plain English in, a documented `configuration.nix` out.
 
-**Grok Bot desktop teammate:** paste the profile in [`GROK-BOT.md`](GROK-BOT.md)
-into **Bot actions → Edit Profile**. This file is the repo contract for any
-agent (Grok Bot, Grok Build, Cursor) working the code.
+**Grok Bot desktop team:** [`GROK-BOT.md`](GROK-BOT.md) — Fractal (dispatch),
+Smith (app), Ground (validator/prompts), Watch (production). This file is the
+repo contract for anyone writing code.
 
 Vision and roadmap live in `~/lab-infra/livingfractal/VISION.md`.
 Deploy and ops live in `~/lab-infra/services/hetzner/livingfractal.md`.

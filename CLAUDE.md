@@ -2,7 +2,7 @@
 
 **Canonical rules:** [AGENTS.md](AGENTS.md)
 
-Grok Bot desktop profile (name, title, description, first task): [GROK-BOT.md](GROK-BOT.md).
+Grok Bot team (Fractal, Smith, Ground, Watch): [GROK-BOT.md](GROK-BOT.md).
 
 Vision: `~/lab-infra/livingfractal/VISION.md`.
 Runbook: `~/lab-infra/services/hetzner/livingfractal.md`.
