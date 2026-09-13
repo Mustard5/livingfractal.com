@@ -56,6 +56,8 @@ Node.js/Express backend, SQLite session logging, prompt versioning with hot-relo
 
 This is a prototype. The validation layer that grounds output against the real nixpkgs package and option database is partially built. Hallucinated package names and incorrect option paths are possible. Test generated configs in a virtual machine before deploying to real hardware.
 
+Agent rules: [`AGENTS.md`](AGENTS.md). Grok Bot desktop profile: [`GROK-BOT.md`](GROK-BOT.md).
+
 Progress is being made in the open. Follow along or try to break it — both are useful.
 
 ## Known limitations
