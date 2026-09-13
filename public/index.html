@@ -192,6 +192,49 @@
     color: var(--accent-red);
   }
 
+
+  /* ── Parts picker ── */
+  .picker-section {
+    margin-bottom: 24px;
+  }
+
+  .chip-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-dim);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .chip:hover {
+    border-color: var(--border-active);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .chip.selected {
+    border-color: rgba(74, 222, 128, 0.45);
+    background: rgba(74, 222, 128, 0.08);
+    color: var(--accent-green);
+  }
+
+  .picker-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
   /* ── Quick starts ── */
   .quick-starts {
     margin-bottom: 40px;
@@ -545,20 +588,44 @@
     <p><strong>Prototype.</strong> This is an early demonstration of the Living Fractal generation engine. Configurations are produced by a language model and checked against the NixOS package and options database, but the validation layer is still being refined. Generated output may contain incorrect option paths, unrecognised package names, or insecure defaults. Do not deploy to production hardware without thorough review. This tool is for exploration and experimentation only.</p>
   </div>
 
+  <div class="picker-section">
+    <div class="input-label">Role</div>
+    <div class="chip-row" id="roleRow" role="group" aria-label="System role">
+      <button type="button" class="chip" data-role="workstation" onclick="selectRole('workstation')">Workstation</button>
+      <button type="button" class="chip" data-role="laptop" onclick="selectRole('laptop')">Laptop</button>
+      <button type="button" class="chip" data-role="homelab" onclick="selectRole('homelab')">Homelab</button>
+      <button type="button" class="chip" data-role="appliance" onclick="selectRole('appliance')">Appliance</button>
+    </div>
+    <p class="picker-hint">Pick one role. Optional starters below can fill this in for you.</p>
+  </div>
+
+  <div class="picker-section">
+    <div class="input-label">Parts</div>
+    <div class="chip-row" id="partsRow" role="group" aria-label="System parts">
+      <button type="button" class="chip" data-part="desktop" onclick="togglePart('desktop')">Desktop</button>
+      <button type="button" class="chip" data-part="disk/encryption" onclick="togglePart('disk/encryption')">Disk / encryption</button>
+      <button type="button" class="chip" data-part="boot" onclick="togglePart('boot')">Boot</button>
+      <button type="button" class="chip" data-part="network" onclick="togglePart('network')">Network</button>
+      <button type="button" class="chip" data-part="services" onclick="togglePart('services')">Services</button>
+      <button type="button" class="chip" data-part="privacy" onclick="togglePart('privacy')">Privacy</button>
+    </div>
+    <p class="picker-hint">Select any that apply.</p>
+  </div>
+
   <div class="input-section">
-    <div class="input-label">Your system description</div>
-    <textarea class="input-area" id="descriptionInput" placeholder="Example: I have a ThinkPad X1 Carbon with 32GB RAM and a 1TB NVMe. I want a privacy-focused workstation with full disk encryption, hardened Firefox, Syncthing for file sync, and no telemetry. I use LibreOffice for documents."></textarea>
+    <div class="input-label">Anything else (optional)</div>
+    <textarea class="input-area" id="descriptionInput" placeholder="Hardware, apps, constraints, or other details the chips do not cover. Example: ThinkPad X1 Carbon, 32GB RAM, Syncthing, LibreOffice, no telemetry."></textarea>
   </div>
 
   <div class="quick-starts">
-    <div class="quick-starts-label">Quick starts</div>
+    <div class="quick-starts-label">Optional role starters</div>
     <div class="quick-starts-row">
-      <button class="quick-btn" onclick="fillQuick('sovereign')">Sovereign Workstation</button>
-      <button class="quick-btn" onclick="fillQuick('homelab')">Homelab Host</button>
-      <button class="quick-btn" onclick="fillQuick('crypto')">Crypto Vault</button>
-      <button class="quick-btn" onclick="fillQuick('offline')">Offline Workstation</button>
-      <button class="quick-btn" onclick="fillQuick('family')">Family Terminal</button>
-      <button class="quick-btn" onclick="fillQuick('network')">Network Guardian</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('sovereign')">Sovereign Workstation</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('homelab')">Homelab Host</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('crypto')">Crypto Vault</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('offline')">Offline Workstation</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('family')">Family Terminal</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('network')">Network Guardian</button>
     </div>
   </div>
 
@@ -607,19 +674,92 @@
 </div>
 
 <script>
-// ── Quick start descriptions ──
+// ── Parts picker state ──
+let selectedRole = null;
+const selectedParts = new Set();
+
+const PART_ORDER = ['desktop', 'disk/encryption', 'boot', 'network', 'services', 'privacy'];
+
 const quickStarts = {
-  sovereign: `I want a sovereign daily-driver workstation. Tiling window manager (Hyprland or Sway). Full disk encryption with LUKS. Hardened Firefox with uBlock Origin. Syncthing for local file sync. LibreOffice for documents. Locked-down firewall, no telemetry, no unnecessary network services. The system should be minimal and private.`,
-  homelab: `I have a mini PC that I want to use as a headless home server. I need Docker or Podman for containers, Caddy as a reverse proxy, WireGuard VPN, and Prometheus with Grafana for monitoring. Hardened SSH with key-only access. Minimal attack surface, no desktop environment. Automatic security updates would be nice.`,
-  crypto: `I need a stripped-down workstation for cryptocurrency operations. Minimal desktop environment. LUKS full disk encryption. Hardware wallet support for Ledger and Trezor. Strict firewall with no open ports. No background network services. USB policy controls. The system should be capable of operating air-gapped for offline transaction signing.`,
-  offline: `I need a workstation for handling sensitive documents. No network services running by default. Full disk encryption. USB device lockdown. Minimal desktop with just a text editor, file manager, and document tools. Tor available but not running by default. Ephemeral session support would be ideal. This machine handles things that cannot leak.`,
-  family: `I want a shared family computer. GNOME or KDE desktop for ease of use. Multiple user accounts with separate profiles. Parent-controlled DNS filtering for content boundaries. No telemetry or data collection. Educational software included. LibreOffice for the kids' schoolwork. Local backup solution. Everything the family needs, nothing that reports home.`,
-  network: `I want to build a dedicated network appliance to replace my consumer router. NixOS as a firewall and router. nftables firewall rules. DHCP and DNS server. VLAN support for network segmentation. WireGuard as a VPN gateway. Suricata for intrusion detection. Headless, minimal, hardened. My network perimeter, my rules.`,
+  sovereign: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy', 'network'],
+    text: `I want a sovereign daily-driver workstation. Tiling window manager (Hyprland or Sway). Full disk encryption with LUKS. Hardened Firefox with uBlock Origin. Syncthing for local file sync. LibreOffice for documents. Locked-down firewall, no telemetry, no unnecessary network services. The system should be minimal and private.`,
+  },
+  homelab: {
+    role: 'homelab',
+    parts: ['services', 'network', 'boot'],
+    text: `I have a mini PC that I want to use as a headless home server. I need Docker or Podman for containers, Caddy as a reverse proxy, WireGuard VPN, and Prometheus with Grafana for monitoring. Hardened SSH with key-only access. Minimal attack surface, no desktop environment. Automatic security updates would be nice.`,
+  },
+  crypto: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy', 'boot'],
+    text: `I need a stripped-down workstation for cryptocurrency operations. Minimal desktop environment. LUKS full disk encryption. Hardware wallet support for Ledger and Trezor. Strict firewall with no open ports. No background network services. USB policy controls. The system should be capable of operating air-gapped for offline transaction signing.`,
+  },
+  offline: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy'],
+    text: `I need a workstation for handling sensitive documents. No network services running by default. Full disk encryption. USB device lockdown. Minimal desktop with just a text editor, file manager, and document tools. Tor available but not running by default. Ephemeral session support would be ideal. This machine handles things that cannot leak.`,
+  },
+  family: {
+    role: 'workstation',
+    parts: ['desktop', 'privacy', 'services'],
+    text: `I want a shared family computer. GNOME or KDE desktop for ease of use. Multiple user accounts with separate profiles. Parent-controlled DNS filtering for content boundaries. No telemetry or data collection. Educational software included. LibreOffice for the kids' schoolwork. Local backup solution. Everything the family needs, nothing that reports home.`,
+  },
+  network: {
+    role: 'appliance',
+    parts: ['network', 'services', 'privacy'],
+    text: `I want to build a dedicated network appliance to replace my consumer router. NixOS as a firewall and router. nftables firewall rules. DHCP and DNS server. VLAN support for network segmentation. WireGuard as a VPN gateway. Suricata for intrusion detection. Headless, minimal, hardened. My network perimeter, my rules.`,
+  },
 };
 
+function syncRoleChips() {
+  document.querySelectorAll('#roleRow .chip').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.role === selectedRole);
+  });
+}
+
+function syncPartChips() {
+  document.querySelectorAll('#partsRow .chip').forEach(btn => {
+    btn.classList.toggle('selected', selectedParts.has(btn.dataset.part));
+  });
+}
+
+function selectRole(role) {
+  selectedRole = selectedRole === role ? null : role;
+  syncRoleChips();
+}
+
+function togglePart(part) {
+  if (selectedParts.has(part)) selectedParts.delete(part);
+  else selectedParts.add(part);
+  syncPartChips();
+}
+
+function setParts(parts) {
+  selectedParts.clear();
+  (parts || []).forEach(p => selectedParts.add(p));
+  syncPartChips();
+}
+
 function fillQuick(key) {
-  document.getElementById('descriptionInput').value = quickStarts[key];
+  const starter = quickStarts[key];
+  if (!starter) return;
+  selectedRole = starter.role;
+  syncRoleChips();
+  setParts(starter.parts);
+  document.getElementById('descriptionInput').value = starter.text;
   document.getElementById('descriptionInput').focus();
+}
+
+function composeIntent() {
+  const chunks = [];
+  if (selectedRole) chunks.push('Role: ' + selectedRole + '.');
+  const parts = PART_ORDER.filter(p => selectedParts.has(p));
+  if (parts.length) chunks.push('Parts: ' + parts.join(', ') + '.');
+  const extra = document.getElementById('descriptionInput').value.trim();
+  if (extra) chunks.push('Additional details: ' + extra);
+  return chunks.join(' ').trim();
 }
 
 // ── Tab switching ──
@@ -738,9 +878,9 @@ async function pollForResult(sessionId, status) {
 
 // ── Generation ──
 async function generate() {
-  const desc = document.getElementById('descriptionInput').value.trim();
+  const desc = composeIntent();
   if (!desc) {
-    document.getElementById('statusText').textContent = 'Please describe your system first.';
+    document.getElementById('statusText').textContent = 'Pick a role, select parts, or add a few details first.';
     document.getElementById('statusText').className = 'status-text error';
     return;
   }
