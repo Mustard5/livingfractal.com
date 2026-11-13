@@ -2,7 +2,7 @@
 
 Describe a system in plain language. Get back a complete, documented NixOS configuration you can download, inspect, and boot.
 
-**Live at [livingfractal.com](https://livingfractal.com).** The homepage is a personal profile with referral links. The generator is at [/generate](https://livingfractal.com/generate).
+**The generator is live at [livingfractal.com/generate](https://livingfractal.com/generate).**
 
 ![Living Fractal generator](screenshot.png)
 
@@ -28,7 +28,7 @@ cd livingfractal.com
 cp .env.example .env    # add your OPENROUTER_API_KEY
 npm install
 npm start
-# Open http://localhost:3120
+# Open http://localhost:3120/generate
 ```
 
 For local development with auto-reload:
