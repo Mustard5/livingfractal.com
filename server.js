@@ -492,7 +492,7 @@ db.init(prompt.version, prompt.content);
 db.initValidationDb();
 
 const server = createServer(app);
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Living Fractal running on port ${PORT}`);
   console.log(`Model: ${MODEL}`);
   console.log(`Prompt: ${prompt.version}`);
