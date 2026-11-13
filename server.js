@@ -467,8 +467,12 @@ app.get('/manifesto', (req, res) => {
   res.sendFile(join(__dirname, 'public/manifesto.html'));
 });
 
+app.get('/generate', (req, res) => {
+  res.sendFile(join(__dirname, 'public/generate.html'));
+});
+
 app.get('/referrals', (req, res) => {
-  res.sendFile(join(__dirname, 'public/referrals.html'));
+  res.redirect(302, '/#referrals');
 });
 
 app.get('/admin', (req, res) => {
