@@ -68,7 +68,7 @@ Progress is being made in the open. Follow along or try to break it — both are
 
 ## Feedback
 
-Open an issue, or reach out on X: [@mustard5](https://x.com/mustard5)
+Open an issue, or reach out on X: [@FluxVoyager](https://x.com/FluxVoyager)
 
 ## License
 
