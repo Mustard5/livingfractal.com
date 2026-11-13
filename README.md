@@ -2,7 +2,7 @@
 
 Describe a system in plain language. Get back a complete, documented NixOS configuration you can download, inspect, and boot.
 
-**Live at [livingfractal.com](https://livingfractal.com)**
+**Live at [livingfractal.com](https://livingfractal.com).** The homepage is a personal profile with referral links. The generator is at [/generate](https://livingfractal.com/generate).
 
 ![Living Fractal generator](screenshot.png)
 
@@ -68,7 +68,7 @@ Progress is being made in the open. Follow along or try to break it — both are
 
 ## Feedback
 
-Open an issue, or reach out on X: [@mustard5](https://x.com/mustard5)
+Open an issue, or reach out on X: [@FluxVoyager](https://x.com/FluxVoyager)
 
 ## License
 

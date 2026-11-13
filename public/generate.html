@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Living Fractal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0c0f;
+    --bg-card: #0f1216;
+    --bg-card-hover: #141920;
+    --border-dim: #1a1f28;
+    --border-active: #2a3444;
+    --text-primary: #c8cdd5;
+    --text-secondary: #6b7280;
+    --text-muted: #3d4554;
+    --accent-green: #4ade80;
+    --accent-green-dim: #16422e;
+    --accent-blue: #60a5fa;
+    --accent-amber: #fbbf24;
+    --accent-red: #f87171;
+    --glow-green: rgba(74, 222, 128, 0.06);
+    --glow-blue: rgba(96, 165, 250, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Source Serif 4', Georgia, serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(74,222,128,0.03), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(96,165,250,0.02), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 0 20px;
+    border-bottom: 1px solid var(--border-dim);
+    margin-bottom: 40px;
+  }
+
+  .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-green);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .brand::before {
+    content: '\25C6';
+    font-size: 8px;
+    opacity: 0.6;
+  }
+
+  .hero-title {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(26px, 4vw, 40px);
+    font-weight: 300;
+    line-height: 1.25;
+    color: var(--text-primary);
+    max-width: 600px;
+    margin-bottom: 12px;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 540px;
+    font-weight: 300;
+  }
+
+  /* ── Input section ── */
+  .input-section {
+    margin-bottom: 32px;
+  }
+
+  .input-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .input-area {
+    width: 100%;
+    min-height: 140px;
+    max-height: 400px;
+    resize: vertical;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px;
+    padding: 20px 22px;
+    color: var(--text-primary);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 15px;
+    line-height: 1.65;
+    transition: border-color 0.25s ease;
+  }
+
+  .input-area:focus {
+    outline: none;
+    border-color: rgba(74, 222, 128, 0.35);
+  }
+
+  .input-area::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+
+  .btn-generate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 12px 28px;
+    border-radius: 8px;
+    border: 1px solid var(--accent-green);
+    background: rgba(74, 222, 128, 0.06);
+    color: var(--accent-green);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-generate:hover:not(:disabled) {
+    background: rgba(74, 222, 128, 0.12);
+    box-shadow: 0 0 24px rgba(74, 222, 128, 0.08);
+    transform: translateY(-1px);
+  }
+
+  .btn-generate:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .status-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: color 0.3s;
+  }
+
+  .status-text.active {
+    color: var(--accent-green);
+  }
+
+  .status-text.error {
+    color: var(--accent-red);
+  }
+
+
+  /* ── Parts picker ── */
+  .picker-section {
+    margin-bottom: 24px;
+  }
+
+  .chip-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-dim);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .chip:hover {
+    border-color: var(--border-active);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .chip.selected {
+    border-color: rgba(74, 222, 128, 0.45);
+    background: rgba(74, 222, 128, 0.08);
+    color: var(--accent-green);
+  }
+
+  .picker-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  /* ── Quick starts ── */
+  .quick-starts {
+    margin-bottom: 40px;
+  }
+
+  .quick-starts-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .quick-starts-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border-dim);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--border-active);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  /* ── Output section ── */
+  .output-section {
+    display: none;
+    margin-bottom: 60px;
+  }
+
+  .output-section.visible {
+    display: block;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .output-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-dim);
+    margin-bottom: 0;
+  }
+
+  .output-tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .output-tab:hover {
+    color: var(--text-secondary);
+  }
+
+  .output-tab.active {
+    color: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+  }
+
+  .output-panel {
+    display: none;
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .output-panel.active {
+    display: block;
+  }
+
+  .config-output {
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+    tab-size: 2;
+  }
+
+  .docs-output {
+    padding: 24px 28px;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .docs-output h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-green);
+    margin: 28px 0 10px;
+    letter-spacing: 0.03em;
+  }
+
+  .docs-output h2:first-child {
+    margin-top: 0;
+  }
+
+  .docs-output h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 20px 0 8px;
+  }
+
+  .docs-output p {
+    margin-bottom: 12px;
+  }
+
+  .docs-output ul, .docs-output ol {
+    margin: 0 0 12px 20px;
+  }
+
+  .docs-output li {
+    margin-bottom: 4px;
+  }
+
+  .docs-output code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(74, 222, 128, 0.06);
+    border: 1px solid var(--border-dim);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--accent-green);
+  }
+
+  .docs-output pre {
+    background: var(--bg-deep);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+
+  .docs-output pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+
+  .docs-output strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* ── Action bar ── */
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border-dim);
+    background: var(--bg-deep);
+    border-radius: 0 0 10px 10px;
+  }
+
+  .action-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 5px;
+    border: 1px solid var(--border-dim);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn:hover {
+    border-color: var(--border-active);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .action-btn.copied {
+    color: var(--accent-green);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+
+  /* ── Usage info ── */
+  .usage-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 10px 24px 0;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Prototype banner ── */
+  .prototype-banner {
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.18);
+    border-radius: 8px;
+    padding: 16px 22px;
+    margin-bottom: 36px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .prototype-banner-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent-amber);
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+
+  .prototype-banner p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .prototype-banner strong {
+    color: var(--accent-amber);
+    font-weight: 600;
+  }
+
+  /* ── Output disclaimer ── */
+  .output-disclaimer {
+    background: rgba(248, 113, 113, 0.05);
+    border: 1px solid rgba(248, 113, 113, 0.15);
+    border-radius: 6px;
+    padding: 12px 18px;
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .output-disclaimer strong {
+    color: var(--accent-red);
+    font-weight: 600;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border-dim);
+    padding: 28px 0 40px;
+    text-align: center;
+  }
+
+  footer p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  footer a:hover { color: var(--accent-green); }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent-green-dim);
+    border-top-color: var(--accent-green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  header { animation: fadeUp 0.5s ease both; }
+  .input-section { animation: fadeUp 0.5s ease 0.08s both; }
+  .quick-starts { animation: fadeUp 0.5s ease 0.14s both; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    header { padding: 32px 0 16px; margin-bottom: 28px; }
+    .input-area { min-height: 120px; padding: 16px; }
+    .controls { gap: 10px; }
+    .config-output { font-size: 11px; padding: 14px 16px; }
+    .docs-output { padding: 18px 20px; }
+    .output-tab { padding: 10px 16px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <header>
+    <a class="brand" href="/">Living Fractal</a>
+    <h1 class="hero-title">Describe your system.<br>We'll build the config.</h1>
+    <p class="hero-sub">An early prototype of the Living Fractal generation engine. Describe a system in plain language and receive a complete, documented NixOS configuration. Not production-ready — for demonstration and experimentation only.</p>
+  </header>
+
+  <div class="prototype-banner">
+    <div class="prototype-banner-icon">&#9888;</div>
+    <p><strong>Prototype.</strong> This is an early demonstration of the Living Fractal generation engine. Configurations are produced by a language model and checked against the NixOS package and options database, but the validation layer is still being refined. Generated output may contain incorrect option paths, unrecognised package names, or insecure defaults. Do not deploy to production hardware without thorough review. This tool is for exploration and experimentation only.</p>
+  </div>
+
+  <div class="picker-section">
+    <div class="input-label">Role</div>
+    <div class="chip-row" id="roleRow" role="group" aria-label="System role">
+      <button type="button" class="chip" data-role="workstation" onclick="selectRole('workstation')">Workstation</button>
+      <button type="button" class="chip" data-role="laptop" onclick="selectRole('laptop')">Laptop</button>
+      <button type="button" class="chip" data-role="homelab" onclick="selectRole('homelab')">Homelab</button>
+      <button type="button" class="chip" data-role="appliance" onclick="selectRole('appliance')">Appliance</button>
+    </div>
+    <p class="picker-hint">Pick one role. Optional starters below can fill this in for you.</p>
+  </div>
+
+  <div class="picker-section">
+    <div class="input-label">Parts</div>
+    <div class="chip-row" id="partsRow" role="group" aria-label="System parts">
+      <button type="button" class="chip" data-part="desktop" onclick="togglePart('desktop')">Desktop</button>
+      <button type="button" class="chip" data-part="disk/encryption" onclick="togglePart('disk/encryption')">Disk / encryption</button>
+      <button type="button" class="chip" data-part="boot" onclick="togglePart('boot')">Boot</button>
+      <button type="button" class="chip" data-part="network" onclick="togglePart('network')">Network</button>
+      <button type="button" class="chip" data-part="services" onclick="togglePart('services')">Services</button>
+      <button type="button" class="chip" data-part="privacy" onclick="togglePart('privacy')">Privacy</button>
+    </div>
+    <p class="picker-hint">Select any that apply.</p>
+  </div>
+
+  <div class="input-section">
+    <div class="input-label">Anything else (optional)</div>
+    <textarea class="input-area" id="descriptionInput" placeholder="Hardware, apps, constraints, or other details the chips do not cover. Example: ThinkPad X1 Carbon, 32GB RAM, Syncthing, LibreOffice, no telemetry."></textarea>
+  </div>
+
+  <div class="quick-starts">
+    <div class="quick-starts-label">Optional role starters</div>
+    <div class="quick-starts-row">
+      <button type="button" class="quick-btn" onclick="fillQuick('sovereign')">Sovereign Workstation</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('homelab')">Homelab Host</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('crypto')">Crypto Vault</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('offline')">Offline Workstation</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('family')">Family Terminal</button>
+      <button type="button" class="quick-btn" onclick="fillQuick('network')">Network Guardian</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-generate" id="generateBtn" onclick="generate()">
+      Generate configuration <span style="font-size:15px">&#8594;</span>
+    </button>
+    <span class="status-text" id="statusText"></span>
+  </div>
+
+  <div class="output-section" id="outputSection">
+    <div class="output-disclaimer">
+      <strong>Review before use.</strong> This configuration was generated by a language model and checked against the NixOS package and options database. The validation layer is still being refined — package names, option paths, or default values may still be incorrect. Always review the configuration before building or deploying. Test in a virtual machine first.
+    </div>
+    <div class="output-tabs">
+      <button class="output-tab active" onclick="switchTab('config')">configuration.nix</button>
+      <button class="output-tab" onclick="switchTab('docs')">Documentation</button>
+    </div>
+    <div class="output-panel active" id="configPanel">
+      <pre class="config-output" id="configOutput"></pre>
+      <div class="action-bar">
+        <button class="action-btn" onclick="copyConfig()">
+          <span id="copyConfigIcon">&#9112;</span> Copy config
+        </button>
+        <button class="action-btn" onclick="downloadConfig()">
+          &#8615; Download .nix
+        </button>
+      </div>
+    </div>
+    <div class="output-panel" id="docsPanel">
+      <div class="docs-output" id="docsOutput"></div>
+      <div class="action-bar">
+        <button class="action-btn" onclick="copyDocs()">
+          <span id="copyDocsIcon">&#9112;</span> Copy docs
+        </button>
+      </div>
+    </div>
+    <div class="usage-info" id="usageInfo"></div>
+  </div>
+
+  <footer>
+    <p><a href="/">Home</a> &middot; <a href="/generate">Generator</a> &middot; <a href="/manifesto">Manifesto</a> &middot; <a href="https://github.com/Mustard5/livingfractal.com" target="_blank" rel="noopener">GitHub</a></p>
+    <p style="margin-top:8px;"><a id="contact-email" href="#">contact</a> &middot; <a href="https://x.com/FluxVoyager" target="_blank" rel="noopener">@FluxVoyager</a></p>
+  </footer>
+
+</div>
+
+<script>
+// ── Parts picker state ──
+let selectedRole = null;
+const selectedParts = new Set();
+
+const PART_ORDER = ['desktop', 'disk/encryption', 'boot', 'network', 'services', 'privacy'];
+
+const quickStarts = {
+  sovereign: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy', 'network'],
+    text: `I want a sovereign daily-driver workstation. Tiling window manager (Hyprland or Sway). Full disk encryption with LUKS. Hardened Firefox with uBlock Origin. Syncthing for local file sync. LibreOffice for documents. Locked-down firewall, no telemetry, no unnecessary network services. The system should be minimal and private.`,
+  },
+  homelab: {
+    role: 'homelab',
+    parts: ['services', 'network', 'boot'],
+    text: `I have a mini PC that I want to use as a headless home server. I need Docker or Podman for containers, Caddy as a reverse proxy, WireGuard VPN, and Prometheus with Grafana for monitoring. Hardened SSH with key-only access. Minimal attack surface, no desktop environment. Automatic security updates would be nice.`,
+  },
+  crypto: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy', 'boot'],
+    text: `I need a stripped-down workstation for cryptocurrency operations. Minimal desktop environment. LUKS full disk encryption. Hardware wallet support for Ledger and Trezor. Strict firewall with no open ports. No background network services. USB policy controls. The system should be capable of operating air-gapped for offline transaction signing.`,
+  },
+  offline: {
+    role: 'workstation',
+    parts: ['desktop', 'disk/encryption', 'privacy'],
+    text: `I need a workstation for handling sensitive documents. No network services running by default. Full disk encryption. USB device lockdown. Minimal desktop with just a text editor, file manager, and document tools. Tor available but not running by default. Ephemeral session support would be ideal. This machine handles things that cannot leak.`,
+  },
+  family: {
+    role: 'workstation',
+    parts: ['desktop', 'privacy', 'services'],
+    text: `I want a shared family computer. GNOME or KDE desktop for ease of use. Multiple user accounts with separate profiles. Parent-controlled DNS filtering for content boundaries. No telemetry or data collection. Educational software included. LibreOffice for the kids' schoolwork. Local backup solution. Everything the family needs, nothing that reports home.`,
+  },
+  network: {
+    role: 'appliance',
+    parts: ['network', 'services', 'privacy'],
+    text: `I want to build a dedicated network appliance to replace my consumer router. NixOS as a firewall and router. nftables firewall rules. DHCP and DNS server. VLAN support for network segmentation. WireGuard as a VPN gateway. Suricata for intrusion detection. Headless, minimal, hardened. My network perimeter, my rules.`,
+  },
+};
+
+function syncRoleChips() {
+  document.querySelectorAll('#roleRow .chip').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.role === selectedRole);
+  });
+}
+
+function syncPartChips() {
+  document.querySelectorAll('#partsRow .chip').forEach(btn => {
+    btn.classList.toggle('selected', selectedParts.has(btn.dataset.part));
+  });
+}
+
+function selectRole(role) {
+  selectedRole = selectedRole === role ? null : role;
+  syncRoleChips();
+}
+
+function togglePart(part) {
+  if (selectedParts.has(part)) selectedParts.delete(part);
+  else selectedParts.add(part);
+  syncPartChips();
+}
+
+function setParts(parts) {
+  selectedParts.clear();
+  (parts || []).forEach(p => selectedParts.add(p));
+  syncPartChips();
+}
+
+function fillQuick(key) {
+  const starter = quickStarts[key];
+  if (!starter) return;
+  selectedRole = starter.role;
+  syncRoleChips();
+  setParts(starter.parts);
+  document.getElementById('descriptionInput').value = starter.text;
+  document.getElementById('descriptionInput').focus();
+}
+
+function composeIntent() {
+  const chunks = [];
+  if (selectedRole) chunks.push('Role: ' + selectedRole + '.');
+  const parts = PART_ORDER.filter(p => selectedParts.has(p));
+  if (parts.length) chunks.push('Parts: ' + parts.join(', ') + '.');
+  const extra = document.getElementById('descriptionInput').value.trim();
+  if (extra) chunks.push('Additional details: ' + extra);
+  return chunks.join(' ').trim();
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.output-panel').forEach(p => p.classList.remove('active'));
+  if (tab === 'config') {
+    document.querySelectorAll('.output-tab')[0].classList.add('active');
+    document.getElementById('configPanel').classList.add('active');
+  } else {
+    document.querySelectorAll('.output-tab')[1].classList.add('active');
+    document.getElementById('docsPanel').classList.add('active');
+  }
+}
+
+// ── Markdown rendering (lightweight, no dependency) ──
+function renderMarkdown(md) {
+  if (!md) return '<p><em>No documentation generated.</em></p>';
+  let html = md
+    // Code blocks
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    // Bold and italic
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Unordered lists
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // Paragraphs (lines not already tagged)
+    .replace(/^(?!<[hluop])(.*\S.*)$/gm, '<p>$1</p>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  return html;
+}
+
+// ── Copy and download ──
+let currentConfig = '';
+let currentDocs = '';
+
+function copyConfig() {
+  navigator.clipboard.writeText(currentConfig).then(() => {
+    const btn = document.querySelector('#configPanel .action-btn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>&#10003;</span> Copied';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>&#9112;</span> Copy config';
+    }, 2000);
+  });
+}
+
+function copyDocs() {
+  navigator.clipboard.writeText(currentDocs).then(() => {
+    const btn = document.querySelector('#docsPanel .action-btn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>&#10003;</span> Copied';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>&#9112;</span> Copy docs';
+    }, 2000);
+  });
+}
+
+function downloadConfig() {
+  const blob = new Blob([currentConfig], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'configuration.nix';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Poll a detached generation job until it resolves ──
+// Returns the result payload on success; throws on error / expiry / timeout.
+// Transient network blips are tolerated — only an explicit error status or the
+// overall deadline ends polling.
+async function pollForResult(sessionId, status) {
+  const POLL_MS = 2000;
+  const DEADLINE = Date.now() + 5 * 60 * 1000; // 5 min hard cap
+  let dots = 0;
+
+  while (Date.now() < DEADLINE) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+
+    let res;
+    try {
+      res = await fetch('/api/status/' + encodeURIComponent(sessionId));
+    } catch (e) {
+      continue; // network blip — keep polling
+    }
+
+    if (res.status === 404) {
+      throw new Error('This session expired before it finished. Please try again.');
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (data.status === 'error') {
+      throw new Error(data.error || 'Generation failed.');
+    }
+    if (data.status === 'done') {
+      return data;
+    }
+
+    // Still running — animate the status line so the user sees progress.
+    dots = (dots + 1) % 4;
+    status.textContent = 'Generating configuration' + '.'.repeat(dots);
+  }
+
+  throw new Error('Generation timed out. Please try again.');
+}
+
+// ── Generation ──
+async function generate() {
+  const desc = composeIntent();
+  if (!desc) {
+    document.getElementById('statusText').textContent = 'Pick a role, select parts, or add a few details first.';
+    document.getElementById('statusText').className = 'status-text error';
+    return;
+  }
+
+  const btn = document.getElementById('generateBtn');
+  const status = document.getElementById('statusText');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating...';
+  status.textContent = 'Translating your intent into NixOS configuration...';
+  status.className = 'status-text active';
+
+  // Hide previous output
+  document.getElementById('outputSection').classList.remove('visible');
+
+  try {
+    // Generation can run past proxy timeouts, so the server starts a detached
+    // job and returns a sessionId; we poll /api/status/:id until it resolves.
+    const startRes = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: desc }),
+    });
+
+    const startData = await startRes.json().catch(() => ({}));
+
+    if (!startRes.ok && startRes.status !== 202) {
+      throw new Error(startData.error || 'Generation failed.');
+    }
+    if (!startData.sessionId) {
+      throw new Error('Generation failed to start. Please try again.');
+    }
+
+    const data = await pollForResult(startData.sessionId, status);
+
+    currentConfig = data.config || '# No configuration generated';
+    currentDocs = data.docs || '';
+
+    document.getElementById('configOutput').textContent = currentConfig;
+    document.getElementById('docsOutput').innerHTML = renderMarkdown(currentDocs);
+
+    // Usage info
+    if (data.usage) {
+      const tokens = data.usage.total_tokens || (data.usage.prompt_tokens + data.usage.completion_tokens);
+      document.getElementById('usageInfo').textContent =
+        `Model: ${data.model || 'deepseek-v3'} | Tokens: ${tokens?.toLocaleString() || 'n/a'}`;
+    } else {
+      document.getElementById('usageInfo').textContent = `Model: ${data.model || 'deepseek-v3'}`;
+    }
+
+    // Show output, switch to config tab
+    switchTab('config');
+    document.getElementById('outputSection').classList.add('visible');
+
+    status.textContent = 'Generation complete.';
+    setTimeout(() => { status.textContent = ''; status.className = 'status-text'; }, 4000);
+
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status-text error';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generate configuration <span style="font-size:15px">&#8594;</span>';
+  }
+}
+
+// ── Contact email (assembled by JS to deter scrapers) ──
+(function() {
+  var u = 'livingfractal.com.outspoken262';
+  var d = 'simplelogin' + '.com';
+  var el = document.getElementById('contact-email');
+  if (el) { el.href = 'mailto:' + u + '@' + d; el.textContent = u + '@' + d; }
+})();
+
+// ── Keyboard shortcut ──
+document.getElementById('descriptionInput').addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    generate();
+  }
+});
+</script>
+</body>
+</html>

@@ -467,8 +467,12 @@ app.get('/manifesto', (req, res) => {
   res.sendFile(join(__dirname, 'public/manifesto.html'));
 });
 
+app.get('/generate', (req, res) => {
+  res.sendFile(join(__dirname, 'public/generate.html'));
+});
+
 app.get('/referrals', (req, res) => {
-  res.sendFile(join(__dirname, 'public/referrals.html'));
+  res.redirect(302, '/#referrals');
 });
 
 app.get('/admin', (req, res) => {
@@ -488,7 +492,7 @@ db.init(prompt.version, prompt.content);
 db.initValidationDb();
 
 const server = createServer(app);
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Living Fractal running on port ${PORT}`);
   console.log(`Model: ${MODEL}`);
   console.log(`Prompt: ${prompt.version}`);

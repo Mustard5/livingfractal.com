@@ -28,7 +28,7 @@ src/db.js          SQLite sessions + grounded package/option checks
 src/validator.js   Heuristic validation (log-only; does not block delivery)
 src/prompts.js     Versioned prompts in prompts/ (hot-reload)
 src/admin.js       Bearer-token admin API
-public/            Static HTML (index, manifesto, admin, referrals)
+public/            Static HTML (index profile, generate, manifesto, admin)
 scripts/sync/      nixos.db nightly sync (packages, options, hardware)
 ```
 

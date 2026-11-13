@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /generate
+Allow: /manifesto
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://livingfractal.com/sitemap.xml
